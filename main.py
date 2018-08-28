@@ -19,30 +19,6 @@ from matplotlib import pyplot   # plotting
 from mpl_toolkits.mplot3d.axes3d import Axes3D
 
 
-def computeDeformationRecovery(data: np.array, cycle_count: int = 5) -> np.array:
-    ret = np.zeros(cycle_count - 1, 2)
-
-    disp = data[:,0]
-    force = data[:,1]
-
-    cutter: DataCutting = DataCutting.separateData(disp, cycle_count)
-
-    disp_here = disp[cutter.compression_ranges[0]]
-    force_here = force[cutter.compression_ranges[0]]
-    start_disp_cutoff_index = ElastoPlasticDeformationCutter.getNongrippedDisplacementIndex(disp_here,
-                                                                                 force_here, True)
-    start_disp = disp_here[start_disp_cutoff_index]
-    start_time = data[start_disp_cutoff_index:,2]
-    for i in range(cycle_count - 1):
-        decompression_range = cutter.decompression_ranges[i]
-        disp_here = disp[decompression_range]
-        force_here = force[decompression_range]
-        cutoff_index = ElastoPlasticDeformationCutter.getNongrippedDisplacementIndex(disp_here, force_here, False)
-        ... # not done yet
-
-    return ret
-
-
 def integral(disp: np.array, force: np.array) -> np.array:
     ret = np.zeros(disp.size)
 
