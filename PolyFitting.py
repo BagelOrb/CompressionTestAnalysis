@@ -5,6 +5,10 @@ from typing import List
 
 from matplotlib import pyplot
 
+import warnings
+
+import warnings
+warnings.simplefilter('ignore', np.RankWarning)
 
 def fitPolynomial(disp: np.array, force: np.array) -> None:
     max_disp: float = max(disp)
