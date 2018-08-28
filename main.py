@@ -2,6 +2,7 @@
 import os
 os.chdir('/home/t.kuipers/Documents/PhD/Fractal Dithering project/experiments')
 
+import TestCases
 from DataCutting import DataCutting
 from ElastoPlasticDeformationCutter import ElastoPlasticDeformationCutter
 from CompSlowDecompTest import CompSlowDecompTest
@@ -149,81 +150,14 @@ def getTangentLine(tangent: Tangent) -> (np.array, np.array):
     return (xs, ys)
 
 
-
-top_file_names: List[str] = [
-    "3.04_100_9_PW3",
-    "3.04_100_11_D",
-    "0.76_11.10_6_PW1",
-    "0.76_11.10_2_T",
-    "0.76_12.14_11_T",
-    "0.76_12.14_8_PW2",
-    "0.76_13.18_2_PW2",
-    "0.76_13.18_1_PW2",
-    "2.15_100_14_PW2",
-    "2.15_100_14_PW4",
-    "2.15_100_13_T",
-    "2.15_100_3_T",
-    "2.15_100_11_PW3",
-    "0.76_15.7_6_PW4",
-    "0.76_15.70_2_PW3",
-    "0.76_17.17_7_T",
-    "0.76_17.17_7_PW3",
-    "0.76_18.65_4_D",
-    "0.76_18.65_2_D",
-    "1.52_100_4_PW3",
-    "1.52_100_4_PW2",
-    "0.76_22.20_13_PW1",
-    "0.76_22.20_7_PW2",
-    "0.76_24.29_7_PW3",
-    "0.76_24.29_10_PW2",
-    "0.76_26.37_5_d",
-    "0.76_26.37_3_D",
-    "1.075_100_3_PW3",
-    "1.075_100_15_D",
-    "1.075_100_3_PW2",
-    "1.075_100_15_PW4",
-    "1.075_100_15_T",
-    "1.075_100_15_PW3"
-    ]
-
-# "0.76_22.20_7_PW1",# --> this test seems to have been performed wrongly!!!
-
-side_file_names: List[str] = [
-    "3.04_100_11_PW4",
-    "3.04_100_12_PW4",
-    "0.76_11.10_8_PW3",
-    "0.76_11.10_11_PW1",
-    "0.76_12.14_14_D",
-    "0.76_12.14_1_PW1",
-    "0.76_13.18_8_PW4",
-    "0.76_13.18_13_PW4",
-    "2.15_100_8_T",
-    "2.15_100_14_PW3",
-    "2.15_100_15_PW1",
-    "0.76_15.7_1_PW3",
-    "0.76_15.70_8_D",
-    "0.76_17.17_13_PW3",
-    "0.76_17.17_2_PW4",
-    "0.76_18.65_1_D",
-    "0.76_18.65_10_PW4",
-    "1.52_100_10_D",
-    "1.52_100_13_T",
-    "0.76_22.20_15_PW2",
-    "0.76_22.20_10_PW3",
-    "0.76_24.29_7_T",
-    "0.76_24.29_12_PW2",
-    "0.76_26.37_13_D",
-    "0.76_26.37_10_T",
-    "1.075_100_7_D",
-    "1.075_100_7_PW4",
-    ]
+#
 
 
-test_top = True
-enable_3D_plot = True
+test_top = False
+enable_3D_plot = False
 plot_tangent = True
 
-test_file_names = top_file_names if test_top else side_file_names
+test_file_names = TestCases.top_file_names if test_top else TestCases.side_file_names
 
 tests = []
 
