@@ -14,6 +14,7 @@ import numpy as np
 
 from matplotlib import cm       # color map
 from matplotlib import pyplot   # plotting
+import matplotlib.patches as mpatches
 from mpl_toolkits.mplot3d.axes3d import Axes3D
 
 
@@ -124,6 +125,18 @@ def getTangentLine(tangent: Tangent) -> (np.array, np.array):
     return (xs, ys)
 
 
+def getColor(test):
+    if density_colors:
+        return cm.rainbow((test.limit_density / 100 - .1) / .3)
+    else:
+        return cm.rainbow(test.printer_number  / 6)
+
+def getLabel(test):
+    if density_colors:
+        return str(int(test.limit_density * 100))
+    else:
+        return test.printer_name
+
 #
 
 
@@ -143,10 +156,6 @@ min_secant_moduli: List[float] = []
 max_tangent_moduli: List[float] = []
 end_tangent_moduli: List[float] = []
 
-pyplot.figure(0)
-pyplot.xlabel('Strain ε (%)')
-pyplot.ylabel('Stress σ (MPa)')
-
 
 if enable_3D_plot:
     fig, ax = pyplot.subplots(subplot_kw = {'projection': '3d'})
@@ -161,7 +170,7 @@ for test_file_name in test_file_names:
 
 if plot_tangent:
     for test in tests:
-        color = PlottingUtil.lighten_color(cm.rainbow((test.limit_density / 100 - .1) / .3), .25)
+        color = PlottingUtil.lighten_color(getColor(test), .25)
         tangent_modulus: Tangent = getTangentModulus(test)
         (xs, ys) = getTangentLine(tangent_modulus)
         pyplot.figure(0)
@@ -173,7 +182,7 @@ if plot_tangent:
 if True:
     for test in tests:
 
-        color = cm.rainbow((test.limit_density / 100 - .1) / .3)
+        color = getColor(test)
 
         strain_comp = test.strain[test.compression_range]
         stress_comp = test.stress[test.compression_range]
@@ -181,10 +190,10 @@ if True:
         stress_decomp = test.stress[test.decompression_range]
 
         if enable_3D_plot:
-            ax.plot(strain_comp, np.ones(len(test.compression_range)) * test.limit_density, stress_comp, color = color)
+            ax.plot(strain_comp, np.ones(len(test.compression_range)) * test.limit_density, stress_comp, color = color, label = getLabel(test))
 
         pyplot.figure(0)
-        pyplot.plot(strain_comp, stress_comp, color = color)
+        pyplot.plot(strain_comp, stress_comp, color = color, label = getLabel(test))
 
         compression_energy = abs(integral(strain_comp, stress_comp)[-1])
         decompression_energy = abs(integral(strain_decomp, stress_decomp)[-1])
@@ -226,17 +235,32 @@ pyplot.xlabel('Structure density (%)')
 pyplot.ylabel('energy absorption ratio (J?)')
 
 pyplot.figure(5)
-pyplot.plot(densities, min_secant_moduli)
+pyplot.autoscale()
+pyplot.scatter(densities, min_secant_moduli)
 pyplot.xlabel('density')
 pyplot.ylabel('Minimal secant modulus')
 
 pyplot.figure(6)
-pyplot.autoscale(tight=True)
+pyplot.autoscale()
 pyplot.scatter(densities, max_tangent_moduli)
 pyplot.xlabel('density')
 pyplot.ylabel('Max tangent modulus')
+
+pyplot.figure(7)
+pyplot.autoscale()
+pyplot.scatter(densities, end_tangent_moduli)
+pyplot.xlabel('density')
+pyplot.ylabel('tangent modulus at 2 kN')
 '''
 
+
+pyplot.figure(0)
+pyplot.legend()
+pyplot.xlabel('Strain ε (%)')
+pyplot.ylabel('Stress σ (MPa)')
+
+if enable_3D_plot:
+    fig.legend()
 
 pyplot.show()
 
