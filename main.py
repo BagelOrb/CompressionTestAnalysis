@@ -17,49 +17,6 @@ from matplotlib import cm       # color map
 from matplotlib import pyplot   # plotting
 from mpl_toolkits.mplot3d.axes3d import Axes3D
 
-compression_count = 5
-
-
-
-def addFileToPlot(filename: str, compression_vs_decomp: bool, colorspec: str) -> None:
-    data = np.genfromtxt(filename, delimiter=',', skip_header=2)
-    disp = data[:,0]
-    force = data[:,1]
-    if np.isnan(np.min(disp)):
-        raise SyntaxError('Couldn\'t read CSV data: encountered nan.\n Check whether data contains quotation marks etc.')
-    cutter: DataCutting = DataCutting(disp, compression_count)
-    for i in range(compression_count):
-        data_range = cutter.compression_ranges[i] if compression_vs_decomp else cutter.decompression_ranges[i]
-        disp_here = disp[data_range]
-        force_here = force[data_range]
-        cutoff_index = ElastoPlasticDeformationCutter.getNongrippedDisplacementIndex(disp_here, force_here, compression_vs_decomp)
-        print('disp: ' + str(disp_here[cutoff_index]) + ' \ttime: ' + str(data[data_range[0] + cutoff_index, 2]))
-        pyplot.axvline(disp_here[cutoff_index], color = colorspec)
-        pyplot.plot(disp_here, force_here, colorspec)
-
-
-def compare8top(compression_vs_decomp: bool = True):
-    addFileToPlot('preliminaries/results/8.4_top.is_ccyclic_Exports/8.4_top_1.csv', compression_vs_decomp, 'g')
-    addFileToPlot('preliminaries/results/8.3_top.is_ccyclic_Exports/8.3_top_1.csv', compression_vs_decomp, 'b')
-    #addFileToPlot('preliminaries/results/5_top.is_ccyclic_Exports/5_top_1.csv', compression_vs_decomp, 'r')
-    pyplot.show()
-
-
-def compare8side(compression_vs_decomp: bool = True):
-    addFileToPlot('preliminaries/results/8.4_side.is_ccyclic_Exports/8.4_side_1.csv', compression_vs_decomp, 'g')
-    addFileToPlot('preliminaries/results/8.3_side.is_ccyclic_Exports/8.3_side_1.csv', compression_vs_decomp, 'b')
-    #addFileToPlot('preliminaries/results/5_side.is_ccyclic_Exports/5_side_1.csv', compression_vs_decomp, 'r')
-    pyplot.show()
-
-def compare9side(compression_vs_decomp: bool = True):
-    addFileToPlot('preliminaries/results/9_side.is_ccyclic_Exports/9_side_1.csv', compression_vs_decomp, 'g')
-    addFileToPlot('preliminaries/results/7_side.is_ccyclic_Exports/7_side_1.csv', compression_vs_decomp, 'b')
-    pyplot.show()
-
-def compare9top(compression_vs_decomp: bool = True):
-    addFileToPlot('preliminaries/results/9_top.is_ccyclic_Exports/9_top_1.csv', compression_vs_decomp, 'g')
-    #addFileToPlot('preliminaries/results/7_top.is_ccyclic_Exports/7_top_1.csv', compression_vs_decomp, 'b')
-    pyplot.show()
 
 def computeDeformationRecovery(data: np.array, cycle_count: int = 5) -> np.array:
     ret = np.zeros(cycle_count - 1, 2)
@@ -95,23 +52,6 @@ def integral(disp: np.array, force: np.array) -> np.array:
         ret[i+1] = total_volume
 
     return ret
-
-def showIntegral():
-    #data = np.genfromtxt('preliminaries/results/8.4_top.is_ccyclic_Exports/8.4_top_1.csv', delimiter=',', skip_header=2)
-    data = np.genfromtxt('preliminaries/results/9_top.is_ccyclic_Exports/9_top_1.csv', delimiter=',', skip_header=2)
-    disp = data[:,0]
-    force = data[:,1]
-    if np.isnan(np.min(disp)):
-        raise SyntaxError('Couldn\'t read CSV data: encountered nan.\n Check whether data contains quotation marks etc.')
-    cutter: DataCutting = DataCutting(disp, compression_count)
-
-    disp1 = disp[cutter.compression_ranges[0]]
-    force1 = force[cutter.compression_ranges[0]]
-    integrated = integral(disp1, force1)
-
-    pyplot.plot(disp1, integrated)
-    pyplot.show()
-
 
 Tangent = NamedTuple('Tangent', [('source_x', float), ('source_y', float), ('val', float)])
 
@@ -152,44 +92,6 @@ def plotTangent(tangent: Tangent) -> None:
     ys = np.array([0, tangent_max[1]]) + tangent.source_y * 1000
     pyplot.plot(xs, ys, color=PlottingUtil.lighten_color(color, .25))
 
-
-#compare8top()
-#compare8side(False)
-
-#addFileToPlot('preliminaries/results/9_top.is_ccyclic_Exports/9_top_1.csv', True, 'g')
-#addFileToPlot('preliminaries/results/9_top.is_ccyclic_Exports/9_top_1.csv', False, 'b')
-#addFileToPlot('preliminaries/results/7_top.is_ccyclic_Exports/7_top_1.csv', compression_vs_decomp, 'b')
-#pyplot.show()
-
-
-
-
-
-#addFileToPlot('preliminaries/results/9_top.is_ccyclic_Exports/9_top_1.csv', True, 'r')
-#addFileToPlot('preliminaries/results/8.4_top.is_ccyclic_Exports/8.4_top_1.csv', True, 'g')
-#addFileToPlot('preliminaries/results/8.4_top.is_ccyclic_Exports/8.4_top_1.csv', False, 'b')
-#addFileToPlot('preliminaries/results/5_top.is_ccyclic_Exports/5_top_1.csv', compression_vs_decomp, 'r')
-#pyplot.show()
-
-'''
-print('compressions:')
-addFileToPlot('preliminaries/results/8.4_top.is_ccyclic_Exports/8.4_top_1.csv', True, 'g')
-print('decompressions:')
-addFileToPlot('preliminaries/results/8.4_top.is_ccyclic_Exports/8.4_top_1.csv', False, 'b')
-pyplot.show()
-'''
-
-
-'''
-#data = np.genfromtxt('preliminaries/results/8.4_top.is_ccyclic_Exports/8.4_top_1.csv', delimiter=',', skip_header=2)
-data = np.genfromtxt('preliminaries/results/9_top.is_ccyclic_Exports/9_top_1.csv', delimiter=',', skip_header=2)
-disp = data[:,0]
-force = data[:,1]
-if np.isnan(np.min(disp)):
-    raise SyntaxError('Couldn\'t read CSV data: encountered nan.\n Check whether data contains quotation marks etc.')
-cutter: DataCutting = DataCutting(disp, compression_count)
-PolyFitting.fitPolynomial(disp[cutter.compression_ranges[0]], force[cutter.compression_ranges[0]])
-'''
 
 
 top_file_names: List[str] = [
