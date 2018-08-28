@@ -94,6 +94,49 @@ def getTangentModulus(test: CompSlowDecompTest, polynomial_order: int = 10, over
     polynomial = PolyFitting.getDerivative(strain_comp_sub, stress_comp_sub, 0, polynomial_order)
     source_y = polynomial(source_x)
 
+    #
+    # pyplot.clf()
+    # pyplot.plot(strain_comp, stress_comp)
+    # pyplot.plot(strain_comp_sub, stress_comp_sub)
+    # pyplot.plot(strain_comp_sub, polynomial(strain_comp_sub))
+    # pyplot.show()
+    # exit(1)
+
+    return Tangent(source_x, source_y, tangent)
+
+
+# get the tangent modulus at the end of the graph
+def getEndTangentModulus(test: CompSlowDecompTest, polynomial_order: int = 10, overall_polynomial_order: int = 25) -> Tangent:
+    strain_comp = test.strain[test.compression_range]
+    stress_comp = test.stress[test.compression_range]
+    derivative_optima_indices = PolyFitting.getRoots(strain_comp, stress_comp, 2, overall_polynomial_order) # where the derivative is maximal or minimal
+
+    min_data_index = 0
+
+    # determine the data on which to fit a polynomial
+    der_3 = PolyFitting.getDerivative(strain_comp, stress_comp, 3, overall_polynomial_order)
+    mapping_der_3 = np.vectorize(der_3)
+    derivative_optima = strain_comp[derivative_optima_indices]
+    derivative_optimum_direction = mapping_der_3(derivative_optima) # positive for minima, negative for maxima
+    der_minima_indices = np.where(derivative_optimum_direction > 0)[0]
+    if len(der_minima_indices) > 0:
+        min_data_index = derivative_optima_indices[der_minima_indices[-1]]
+
+    # fit curve to first part of the graph and get the max derivative from that
+    strain_comp_sub = strain_comp[min_data_index:-1]
+    stress_comp_sub = stress_comp[min_data_index:-1]
+    polynomial = PolyFitting.fit(strain_comp_sub, stress_comp_sub, polynomial_order)
+    derivative = PolyFitting.getDerivative(strain_comp_sub, stress_comp_sub, 1, polynomial_order)
+    source_x = strain_comp_sub[-1]
+    source_y = polynomial(source_x)
+    tangent = derivative(source_x)
+
+    # pyplot.clf()
+    # pyplot.plot(strain_comp, stress_comp)
+    # pyplot.plot(strain_comp_sub, stress_comp_sub)
+    # pyplot.plot(strain_comp_sub, polynomial(strain_comp_sub))
+    # pyplot.show()
+
     return Tangent(source_x, source_y, tangent)
 
 
@@ -190,6 +233,7 @@ energy_diffs: List[float] = []
 energy_ratios: List[float] = []
 min_secant_moduli: List[float] = []
 max_tangent_moduli: List[float] = []
+end_tangent_moduli: List[float] = []
 
 pyplot.figure(0)
 pyplot.xlabel('Strain ε (%)')
@@ -209,13 +253,14 @@ for test_file_name in test_file_names:
 
 if plot_tangent:
     for test in tests:
-        color = cm.rainbow((test.limit_density / 100 - .1) / .3)
+        color = PlottingUtil.lighten_color(cm.rainbow((test.limit_density / 100 - .1) / .3), .25)
         tangent_modulus: Tangent = getTangentModulus(test)
         (xs, ys) = getTangentLine(tangent_modulus)
         pyplot.figure(0)
-        pyplot.plot(xs, ys, color = PlottingUtil.lighten_color(color, .25))
+        # pyplot.scatter(xs[0:1], ys[0:1])
+        pyplot.plot(xs, ys, color = color)
         if enable_3D_plot:
-            ax.plot(xs, [test.limit_density, test.limit_density], ys, color = PlottingUtil.lighten_color(color, .25))
+            ax.plot(xs, [test.limit_density, test.limit_density], ys, color = color)
 
 if True:
     for test in tests:
@@ -228,14 +273,10 @@ if True:
         stress_decomp = test.stress[test.decompression_range]
 
         if enable_3D_plot:
-            ax.plot(strain_comp * 100, np.ones(len(test.compression_range)) * test.limit_density, stress_comp * 1000, color = color)
+            ax.plot(strain_comp, np.ones(len(test.compression_range)) * test.limit_density, stress_comp, color = color)
 
         pyplot.figure(0)
-        pyplot.plot(strain_comp * 100, stress_comp * 1000, color = color)
-
-        tangent_modulus: Tangent = getTangentModulus(test)
-
-        max_tangent_moduli.append(tangent_modulus.val)
+        pyplot.plot(strain_comp, stress_comp, color = color)
 
         compression_energy = abs(integral(strain_comp, stress_comp)[-1])
         decompression_energy = abs(integral(strain_decomp, stress_decomp)[-1])
@@ -243,9 +284,11 @@ if True:
         compression_energies.append(compression_energy)
         energy_diffs.append(compression_energy - decompression_energy)
         energy_ratios.append((compression_energy - decompression_energy) / compression_energy)
-        stress_t = stress_comp[100:-1] - stress_comp[0]
+        stress_t = stress_comp[100:-1]
         strain_t = strain_comp[100:-1] - strain_comp[0]
         min_secant_moduli.append(min(stress_t / strain_t))
+        max_tangent_moduli.append(getTangentModulus(test).val)
+        end_tangent_moduli.append(getEndTangentModulus(test).val)
 
 
 if False:
