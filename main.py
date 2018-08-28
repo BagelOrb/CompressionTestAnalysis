@@ -56,41 +56,53 @@ def integral(disp: np.array, force: np.array) -> np.array:
 Tangent = NamedTuple('Tangent', [('source_x', float), ('source_y', float), ('val', float)])
 
 
-def getTangentModulus(test: CompSlowDecompTest) -> Tangent:
+def getTangentModulus(test: CompSlowDecompTest, polynomial_order: int = 10, overall_polynomial_order: int = 25) -> Tangent:
     strain_comp = test.strain[test.compression_range]
     stress_comp = test.stress[test.compression_range]
-    derivative_optima_indices = PolyFitting.getRoots(strain_comp, stress_comp, 2, 21)
-    print('derivative_optima_indices = ' + str(derivative_optima_indices))
-    der = PolyFitting.getDerivative(strain_comp, stress_comp, 1, 21)
-    der_3 = PolyFitting.getDerivative(strain_comp, stress_comp, 3, 21)
-    first_optimum_direction = der_3(strain_comp[derivative_optima_indices[0]]) # to determine whether it's a top or a bottom peek in the derivative
+    derivative_optima_indices = PolyFitting.getRoots(strain_comp, stress_comp, 2, overall_polynomial_order) # where the derivative is maximal or minimal
+
+    max_data_index = strain_comp.size - 1
+
+    # determine the data on which to fit a polynomial
+    der_3 = PolyFitting.getDerivative(strain_comp, stress_comp, 3, overall_polynomial_order)
+    mapping_der_3 = np.vectorize(der_3)
+    derivative_optima = strain_comp[derivative_optima_indices]
+    derivative_optimum_direction = mapping_der_3(derivative_optima) # positive for minima, negative for maxima
+    der_minima_indices = np.where(derivative_optimum_direction > 0)[0]
+    if len(der_minima_indices) > 0:
+        max_data_index = derivative_optima_indices[der_minima_indices[0]]
+
+    # fit curve to first part of the graph and get the max derivative from that
+    strain_comp_sub = strain_comp[0:max_data_index]
+    stress_comp_sub = stress_comp[0:max_data_index]
+    derivative_optima_indices_sub = PolyFitting.getRoots(strain_comp_sub, stress_comp_sub, 2, polynomial_order) # where the derivative is maximal or minimal
+    der_sub = PolyFitting.getDerivative(strain_comp_sub, stress_comp_sub, 1, polynomial_order)
+    der_3_sub = PolyFitting.getDerivative(strain_comp_sub, stress_comp_sub, 3, polynomial_order)
+    first_optimum_is_max = der_3_sub(strain_comp_sub[derivative_optima_indices_sub[0]]) < 0 # to determine whether it's a top or a bottom peek in the derivative
     tangent: float = 0
     source_x: float = 0
-    if first_optimum_direction < 0:
-        strain_at_derivative_max = strain_comp[derivative_optima_indices[0]]
+    if first_optimum_is_max:
+        strain_at_derivative_max = strain_comp_sub[derivative_optima_indices_sub[0]-1]
         assert(strain_at_derivative_max > 0)
-        tangent = der(strain_at_derivative_max)
+        tangent = der_sub(strain_at_derivative_max)
         source_x = strain_at_derivative_max
     else:
-        tangent = der(0)
+        tangent = der_sub(0)
         source_x = 0
     assert(tangent > 0)
-    polynomial = PolyFitting.getDerivative(strain_comp, stress_comp, 0, 21)
+    polynomial = PolyFitting.getDerivative(strain_comp_sub, stress_comp_sub, 0, polynomial_order)
     source_y = polynomial(source_x)
+
     return Tangent(source_x, source_y, tangent)
 
 
-    # min_disp_idx = np.where(test.stress[test.compression_range] > 1.0)[0][0]
-    # first_derivative_min = np.where(derivative_optima_indices > min_disp_idx)[0][0]
-
-
-def plotTangent(tangent: Tangent) -> None:
+def getTangentLine(tangent: Tangent) -> (np.array, np.array):
     tangent_max = np.array([40, 40 * tangent.val * 10])
     if tangent_max[1] > 0.4:
         tangent_max = tangent_max * 0.4 / (40 * tangent.val * 10)
     xs = np.array([0, tangent_max[0]]) + tangent.source_x * 100
     ys = np.array([0, tangent_max[1]]) + tangent.source_y * 1000
-    pyplot.plot(xs, ys, color=PlottingUtil.lighten_color(color, .25))
+    return (xs, ys)
 
 
 
@@ -145,27 +157,27 @@ side_file_names: List[str] = [
     "2.15_100_14_PW3",
     "2.15_100_15_PW1",
     "0.76_15.7_1_PW3",
-    # "0.76_15.70_8_D",
-    # "0.76_17.17_13_PW3",
-    # "0.76_17.17_2_PW4",
-    # "0.76_18.65_1_D",
-    # "0.76_18.65_10_PW4",
-    # "1.52_100_10_D",
-    # "1.52_100_13_T",
-    # "0.76_22.20_15_PW2",
-    # "0.76_22.20_10_PW3",
-    # "0.76_24.29_7_T",
-    # "0.76_24.29_12_PW2",
-    # "0.76_26.37_13_D",
-    # "0.76_26.37_10_T",
-    # "1.075_100_7_D",
-    # "1.075_100_7_PW4",
+    "0.76_15.70_8_D",
+    "0.76_17.17_13_PW3",
+    "0.76_17.17_2_PW4",
+    "0.76_18.65_1_D",
+    "0.76_18.65_10_PW4",
+    "1.52_100_10_D",
+    "1.52_100_13_T",
+    "0.76_22.20_15_PW2",
+    "0.76_22.20_10_PW3",
+    "0.76_24.29_7_T",
+    "0.76_24.29_12_PW2",
+    "0.76_26.37_13_D",
+    "0.76_26.37_10_T",
+    "1.075_100_7_D",
+    "1.075_100_7_PW4",
     ]
 
 
 test_top = True
 enable_3D_plot = True
-plot_tangent = False
+plot_tangent = True
 
 test_file_names = top_file_names if test_top else side_file_names
 
@@ -182,8 +194,6 @@ pyplot.figure(0)
 pyplot.xlabel('Strain ε (%)')
 pyplot.ylabel('Stress σ (MPa)')
 
-cm_subsection = np.linspace(start = 0.0, stop = 1.0, num = len(test_file_names))
-colors = [ cm.rainbow(x) for x in cm_subsection ]
 
 if enable_3D_plot:
     fig, ax = pyplot.subplots(subplot_kw = {'projection': '3d'})
@@ -196,8 +206,18 @@ for test_file_name in test_file_names:
     test = CompSlowDecompTest("test_results/Top/" if test_top else "test_results/Side/", test_file_name)
     tests.append(test)
 
+if plot_tangent:
+    for test in tests:
+        color = cm.rainbow((test.limit_density / 100 - .1) / .3)
+        tangent_modulus: Tangent = getTangentModulus(test)
+        (xs, ys) = getTangentLine(tangent_modulus)
+        pyplot.figure(0)
+        pyplot.plot(xs, ys, color = PlottingUtil.lighten_color(color, .25))
+        if enable_3D_plot:
+            ax.plot(xs, [test.limit_density, test.limit_density], ys, color = PlottingUtil.lighten_color(color, .25))
+
 if True:
-    for color, test in list(zip(colors, tests)):
+    for test in tests:
 
         color = cm.rainbow((test.limit_density / 100 - .1) / .3)
 
@@ -207,15 +227,15 @@ if True:
         stress_decomp = test.stress[test.decompression_range]
 
         if enable_3D_plot:
-            ax.plot(strain_comp * 100, np.ones(len(test.compression_range)) * test.limit_density, stress_comp * 1000, color=color)
+            ax.plot(strain_comp * 100, np.ones(len(test.compression_range)) * test.limit_density, stress_comp * 1000, color = color)
 
         pyplot.figure(0)
-        pyplot.plot(strain_comp * 100, stress_comp * 1000, color=color)
+        pyplot.plot(strain_comp * 100, stress_comp * 1000, color = color)
+
         tangent_modulus: Tangent = getTangentModulus(test)
-        if plot_tangent:
-            plotTangent(tangent_modulus)
 
         max_tangent_moduli.append(tangent_modulus.val)
+
         compression_energy = abs(integral(strain_comp, stress_comp)[-1])
         decompression_energy = abs(integral(strain_decomp, stress_decomp)[-1])
         densities.append(test.limit_density)
@@ -257,12 +277,13 @@ pyplot.figure(5)
 pyplot.plot(densities, min_secant_moduli)
 pyplot.xlabel('density')
 pyplot.ylabel('Minimal secant modulus')
-'''
+
 pyplot.figure(6)
+pyplot.autoscale(tight=True)
 pyplot.scatter(densities, max_tangent_moduli)
 pyplot.xlabel('density')
 pyplot.ylabel('Max tangent modulus')
-
+'''
 
 
 pyplot.show()
