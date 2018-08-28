@@ -3,8 +3,6 @@ import os
 os.chdir('/home/t.kuipers/Documents/PhD/Fractal Dithering project/experiments')
 
 import TestCases
-from DataCutting import DataCutting
-from ElastoPlasticDeformationCutter import ElastoPlasticDeformationCutter
 from CompSlowDecompTest import CompSlowDecompTest
 import PolyFitting
 import PlottingUtil
