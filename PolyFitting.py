@@ -44,6 +44,9 @@ def getDerivative(x_data: np.array, y_data: np.array, derivate_nr: int, polynomi
     return der
 
 
+def fit(x_data: np.array, y_data: np.array, polynomial_order: int) -> np.lib.polynomial.poly1d:
+    return getDerivative(x_data, y_data, derivate_nr = 0, polynomial_order = polynomial_order)
+
 ##
 # get the positions where a given order derivative has a maximum or minimum
 def getRoots(x_data: np.array, y_data: np.array, derivate_nr: int, polynomial_order: int) -> List[int]:

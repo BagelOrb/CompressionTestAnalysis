@@ -39,8 +39,8 @@ def computeDeformationRecovery(data: np.array, cycle_count: int = 5) -> np.array
         cutoff_index = ElastoPlasticDeformationCutter.getNongrippedDisplacementIndex(disp_here, force_here, False)
         ... # not done yet
 
-
     return ret
+
 
 def integral(disp: np.array, force: np.array) -> np.array:
     ret = np.zeros(disp.size)
@@ -52,6 +52,7 @@ def integral(disp: np.array, force: np.array) -> np.array:
         ret[i+1] = total_volume
 
     return ret
+
 
 Tangent = NamedTuple('Tangent', [('source_x', float), ('source_y', float), ('val', float)])
 
