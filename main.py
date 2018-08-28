@@ -66,10 +66,10 @@ def getTangentModulus(test: CompSlowDecompTest, polynomial_order: int = 10, over
 
     # determine the data on which to fit a polynomial
     der_3 = PolyFitting.getDerivative(strain_comp, stress_comp, 3, overall_polynomial_order)
-    mapping_der_3 = np.vectorize(der_3)
     derivative_optima = strain_comp[derivative_optima_indices]
+    mapping_der_3 = np.vectorize(der_3) # so that we can map the function over an np.array
     derivative_optimum_direction = mapping_der_3(derivative_optima) # positive for minima, negative for maxima
-    der_minima_indices = np.where(derivative_optimum_direction > 0)[0]
+    der_minima_indices = np.where(np.logical_and(derivative_optimum_direction > 0, derivative_optima > 0.05))[0]
     if len(der_minima_indices) > 0:
         max_data_index = derivative_optima_indices[der_minima_indices[0]]
 
