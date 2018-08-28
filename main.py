@@ -42,67 +42,20 @@ def getColor(test):
 
 def getLabel(test):
     if density_colors:
-        return str(int(test.limit_density * 100))
+        return str(int(test.limit_density))
     else:
         return test.printer_name
 
 #
 
 
-test_top = False
-enable_3D_plot = False
-plot_tangent = True
 
-test_file_names = TestCases.top_file_names if test_top else TestCases.side_file_names
-
-tests = []
-
-densities: List[float] = []
-compression_energies: List[float] = []
-energy_diffs: List[float] = []
-energy_ratios: List[float] = []
-min_secant_moduli: List[float] = []
-max_tangent_moduli: List[float] = []
-end_tangent_moduli: List[float] = []
-
-
-if enable_3D_plot:
-    fig, ax = pyplot.subplots(subplot_kw = {'projection': '3d'})
-    ax.set_xlabel('Strain ε (%)')
-    ax.set_ylabel('Density (%)')
-    ax.set_zlabel('Stress σ (MPa)')
-
-for test_file_name in test_file_names:
-    print('gathering info for: ' + test_file_name)
-    test = CompSlowDecompTest("test_results/Top/" if test_top else "test_results/Side/", test_file_name)
-    tests.append(test)
-
-if plot_tangent:
+def gatherStatistics():
     for test in tests:
-        color = PlottingUtil.lighten_color(getColor(test), .25)
-        tangent_modulus: TangentModulus = TangentModulus.getTangentModulus(test)
-        (xs, ys) = TangentModulus.getTangentLine(tangent_modulus)
-        pyplot.figure(0)
-        # pyplot.scatter(xs[0:1], ys[0:1])
-        pyplot.plot(xs, ys, color = color)
-        if enable_3D_plot:
-            ax.plot(xs, [test.limit_density, test.limit_density], ys, color = color)
-
-if True:
-    for test in tests:
-
-        color = getColor(test)
-
         strain_comp = test.strain[test.compression_range]
         stress_comp = test.stress[test.compression_range]
         strain_decomp = test.strain[test.decompression_range]
         stress_decomp = test.stress[test.decompression_range]
-
-        if enable_3D_plot:
-            ax.plot(strain_comp, np.ones(len(test.compression_range)) * test.limit_density, stress_comp, color = color, label = getLabel(test))
-
-        pyplot.figure(0)
-        pyplot.plot(strain_comp, stress_comp, color = color, label = getLabel(test))
 
         compression_energy = abs(integral(strain_comp, stress_comp)[-1])
         decompression_energy = abs(integral(strain_decomp, stress_decomp)[-1])
@@ -117,22 +70,100 @@ if True:
         end_tangent_moduli.append(TangentModulus.getEndTangentModulus(test).val)
 
 
+def plotCompressions():
+    if plot_tangent:
+        for test in tests:
+            color = PlottingUtil.lighten_color(getColor(test), .25)
+            tangent_modulus: TangentModulus = TangentModulus.getTangentModulus(test)
+            (xs, ys) = TangentModulus.getTangentLine(tangent_modulus)
+            pyplot.figure(0)
+            # pyplot.scatter(xs[0:1], ys[0:1])
+            pyplot.plot(xs, ys, color=color)
+            if enable_3D_plot:
+                ax.plot(xs, [test.limit_density, test.limit_density], ys, color=color)
 
+    for test in tests:
+        strain_comp = test.strain[test.compression_range]
+        stress_comp = test.stress[test.compression_range]
+
+        color = getColor(test)
+        if enable_3D_plot:
+            ax.plot(strain_comp, np.ones(len(test.compression_range)) * test.limit_density, stress_comp, color = color, label = getLabel(test))
+
+        pyplot.figure(0)
+        pyplot.plot(strain_comp, stress_comp, color = color, label = getLabel(test))
+
+        # fit = PolyFitting.fit(strain_comp, stress_comp, 25)
+        # fit_map = np.vectorize(fit)
+        # pyplot.plot(strain_comp, fit_map(strain_comp), color = getColor(test), label = getLabel(test))
+
+
+def plotCompressionDerivatives():
+    for test in tests:
+        strain_comp = test.strain[test.compression_range]
+        stress_comp = test.stress[test.compression_range]
+
+        pyplot.figure(2)
+        der = PolyFitting.getDerivative(strain_comp, stress_comp, 1, 25)
+        der_map = np.vectorize(der)
+        pyplot.plot(strain_comp, der_map(strain_comp), color = PlottingUtil.lighten_color(getColor(test), .7), label = getLabel(test))
+
+
+#
+
+test_top = False
+enable_3D_plot = True
+plot_tangent = False
+density_colors = True
+
+
+
+test_file_names = TestCases.top_file_names if test_top else TestCases.side_file_names
+
+tests = []
+
+densities: List[float] = []
+compression_energies: List[float] = []
+energy_diffs: List[float] = []
+energy_ratios: List[float] = []
+min_secant_moduli: List[float] = []
+max_tangent_moduli: List[float] = []
+end_tangent_moduli: List[float] = []
+
+if enable_3D_plot:
+    fig, ax = pyplot.subplots(subplot_kw = {'projection': '3d'})
+    ax.set_xlabel('Strain ε (%)')
+    ax.set_ylabel('Density (%)')
+    ax.set_zlabel('Stress σ (MPa)')
+
+for test_file_name in test_file_names:
+    print('gathering info for: ' + test_file_name)
+    test = CompSlowDecompTest("test_results/Top/" if test_top else "test_results/Side/", test_file_name)
+    tests.append(test)
+
+
+
+plotCompressions()
+plotCompressionDerivatives()
+
+
+
+
+# pyplot.figure(2)
+# pyplot.plot(densities, energy_diffs)
+# pyplot.xlabel('Structure density (%)')
+# pyplot.ylabel('Energy consumption (J?)')
 '''
-pyplot.figure(2)
-pyplot.plot(densities, energy_diffs)
-pyplot.xlabel('Structure density (%)')
-pyplot.ylabel('Energy consumption (J?)')
-
 pyplot.figure(3)
-pyplot.plot(densities, compression_energies)
+pyplot.autoscale()
+pyplot.scatter(densities, compression_energies)
 pyplot.xlabel('Structure density (%)')
 pyplot.ylabel('Compressive energy (J?)')
 
-pyplot.figure(4)
-pyplot.plot(densities, energy_ratios)
-pyplot.xlabel('Structure density (%)')
-pyplot.ylabel('energy absorption ratio (J?)')
+# pyplot.figure(4)
+# pyplot.plot(densities, energy_ratios)
+# pyplot.xlabel('Structure density (%)')
+# pyplot.ylabel('energy absorption ratio (J?)')
 
 pyplot.figure(5)
 pyplot.autoscale()
@@ -152,7 +183,6 @@ pyplot.scatter(densities, end_tangent_moduli)
 pyplot.xlabel('density')
 pyplot.ylabel('tangent modulus at 2 kN')
 '''
-
 
 pyplot.figure(0)
 pyplot.legend()
