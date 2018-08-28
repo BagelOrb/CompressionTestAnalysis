@@ -63,4 +63,4 @@ class CompSlowDecompTest:
         self.disp -= disp_at_start_cutoff
 
         self.strain = self.disp / self.gcode_dimensions[0]
-        self.stress = self.force / self.gcode_area
+        self.stress = self.force / self.gcode_area * 1000

@@ -97,11 +97,11 @@ def getTangentModulus(test: CompSlowDecompTest, polynomial_order: int = 10, over
 
 
 def getTangentLine(tangent: Tangent) -> (np.array, np.array):
-    tangent_max = np.array([40, 40 * tangent.val * 10])
-    if tangent_max[1] > 0.4:
-        tangent_max = tangent_max * 0.4 / (40 * tangent.val * 10)
-    xs = np.array([0, tangent_max[0]]) + tangent.source_x * 100
-    ys = np.array([0, tangent_max[1]]) + tangent.source_y * 1000
+    tangent_max = np.array([.4, .4 * tangent.val])
+    if tangent_max[1] > 0.45:
+        tangent_max = tangent_max * 0.45 / (.4 * tangent.val)
+    xs = np.array([0, tangent_max[0]]) + tangent.source_x
+    ys = np.array([0, tangent_max[1]]) + tangent.source_y
     return (xs, ys)
 
 
