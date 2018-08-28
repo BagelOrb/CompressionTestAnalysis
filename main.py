@@ -2,16 +2,20 @@
 import os
 os.chdir('/home/t.kuipers/Documents/PhD/Fractal Dithering project/experiments')
 
-import PolyFitting
 from DataCutting import DataCutting
-
 from ElastoPlasticDeformationCutter import ElastoPlasticDeformationCutter
+from CompSlowDecompTest import CompSlowDecompTest
+import PolyFitting
+import PlottingUtil
+
+from typing import List
+from typing import NamedTuple
 
 import numpy as np
 
-
-from matplotlib import pyplot
-
+from matplotlib import cm       # color map
+from matplotlib import pyplot   # plotting
+from mpl_toolkits.mplot3d.axes3d import Axes3D
 
 compression_count = 5
 
@@ -23,12 +27,14 @@ def addFileToPlot(filename: str, compression_vs_decomp: bool, colorspec: str) ->
     force = data[:,1]
     if np.isnan(np.min(disp)):
         raise SyntaxError('Couldn\'t read CSV data: encountered nan.\n Check whether data contains quotation marks etc.')
-    cutter: DataCutting = DataCutting.separateData(disp, compression_count)
-    for i in {1}: #range(compression_count):
+    cutter: DataCutting = DataCutting(disp, compression_count)
+    for i in range(compression_count):
         data_range = cutter.compression_ranges[i] if compression_vs_decomp else cutter.decompression_ranges[i]
         disp_here = disp[data_range]
         force_here = force[data_range]
-        pyplot.axvline(disp[ElastoPlasticDeformationCutter.getNongrippedDisplacementIndex(disp_here, force_here, compression_vs_decomp)])
+        cutoff_index = ElastoPlasticDeformationCutter.getNongrippedDisplacementIndex(disp_here, force_here, compression_vs_decomp)
+        print('disp: ' + str(disp_here[cutoff_index]) + ' \ttime: ' + str(data[data_range[0] + cutoff_index, 2]))
+        pyplot.axvline(disp_here[cutoff_index], color = colorspec)
         pyplot.plot(disp_here, force_here, colorspec)
 
 
@@ -50,28 +56,314 @@ def compare9side(compression_vs_decomp: bool = True):
     addFileToPlot('preliminaries/results/7_side.is_ccyclic_Exports/7_side_1.csv', compression_vs_decomp, 'b')
     pyplot.show()
 
+def compare9top(compression_vs_decomp: bool = True):
+    addFileToPlot('preliminaries/results/9_top.is_ccyclic_Exports/9_top_1.csv', compression_vs_decomp, 'g')
+    #addFileToPlot('preliminaries/results/7_top.is_ccyclic_Exports/7_top_1.csv', compression_vs_decomp, 'b')
+    pyplot.show()
+
+def computeDeformationRecovery(data: np.array, cycle_count: int = 5) -> np.array:
+    ret = np.zeros(cycle_count - 1, 2)
+
+    disp = data[:,0]
+    force = data[:,1]
+
+    cutter: DataCutting = DataCutting.separateData(disp, cycle_count)
+
+    disp_here = disp[cutter.compression_ranges[0]]
+    force_here = force[cutter.compression_ranges[0]]
+    start_disp_cutoff_index = ElastoPlasticDeformationCutter.getNongrippedDisplacementIndex(disp_here,
+                                                                                 force_here, True)
+    start_disp = disp_here[start_disp_cutoff_index]
+    start_time = data[start_disp_cutoff_index:,2]
+    for i in range(cycle_count - 1):
+        decompression_range = cutter.decompression_ranges[i]
+        disp_here = disp[decompression_range]
+        force_here = force[decompression_range]
+        cutoff_index = ElastoPlasticDeformationCutter.getNongrippedDisplacementIndex(disp_here, force_here, False)
+        ... # not done yet
+
+
+    return ret
+
+def integral(disp: np.array, force: np.array) -> np.array:
+    ret = np.zeros(disp.size)
+
+    total_volume: float = 0
+    for i in range(disp.size - 1):
+        volume = (disp[i+1] - disp[i]) * 0.5 * (force[i+1] + force[i])
+        total_volume += volume
+        ret[i+1] = total_volume
+
+    return ret
+
+def showIntegral():
+    #data = np.genfromtxt('preliminaries/results/8.4_top.is_ccyclic_Exports/8.4_top_1.csv', delimiter=',', skip_header=2)
+    data = np.genfromtxt('preliminaries/results/9_top.is_ccyclic_Exports/9_top_1.csv', delimiter=',', skip_header=2)
+    disp = data[:,0]
+    force = data[:,1]
+    if np.isnan(np.min(disp)):
+        raise SyntaxError('Couldn\'t read CSV data: encountered nan.\n Check whether data contains quotation marks etc.')
+    cutter: DataCutting = DataCutting(disp, compression_count)
+
+    disp1 = disp[cutter.compression_ranges[0]]
+    force1 = force[cutter.compression_ranges[0]]
+    integrated = integral(disp1, force1)
+
+    pyplot.plot(disp1, integrated)
+    pyplot.show()
+
+
+Tangent = NamedTuple('Tangent', [('source_x', float), ('source_y', float), ('val', float)])
+
+
+def getTangentModulus(test: CompSlowDecompTest) -> Tangent:
+    strain_comp = test.strain[test.compression_range]
+    stress_comp = test.stress[test.compression_range]
+    derivative_optima_indices = PolyFitting.getRoots(strain_comp, stress_comp, 2, 21)
+    print('derivative_optima_indices = ' + str(derivative_optima_indices))
+    der = PolyFitting.getDerivative(strain_comp, stress_comp, 1, 21)
+    der_3 = PolyFitting.getDerivative(strain_comp, stress_comp, 3, 21)
+    first_optimum_direction = der_3(strain_comp[derivative_optima_indices[0]]) # to determine whether it's a top or a bottom peek in the derivative
+    tangent: float = 0
+    source_x: float = 0
+    if first_optimum_direction < 0:
+        strain_at_derivative_max = strain_comp[derivative_optima_indices[0]]
+        assert(strain_at_derivative_max > 0)
+        tangent = der(strain_at_derivative_max)
+        source_x = strain_at_derivative_max
+    else:
+        tangent = der(0)
+        source_x = 0
+    assert(tangent > 0)
+    polynomial = PolyFitting.getDerivative(strain_comp, stress_comp, 0, 21)
+    source_y = polynomial(source_x)
+    return Tangent(source_x, source_y, tangent)
+
+
+    # min_disp_idx = np.where(test.stress[test.compression_range] > 1.0)[0][0]
+    # first_derivative_min = np.where(derivative_optima_indices > min_disp_idx)[0][0]
+
+
+def plotTangent(tangent: Tangent) -> None:
+    tangent_max = np.array([40, 40 * tangent.val * 10])
+    if tangent_max[1] > 0.4:
+        tangent_max = tangent_max * 0.4 / (40 * tangent.val * 10)
+    xs = np.array([0, tangent_max[0]]) + tangent.source_x * 100
+    ys = np.array([0, tangent_max[1]]) + tangent.source_y * 1000
+    pyplot.plot(xs, ys, color=PlottingUtil.lighten_color(color, .25))
+
 
 #compare8top()
 #compare8side(False)
 
+#addFileToPlot('preliminaries/results/9_top.is_ccyclic_Exports/9_top_1.csv', True, 'g')
+#addFileToPlot('preliminaries/results/9_top.is_ccyclic_Exports/9_top_1.csv', False, 'b')
+#addFileToPlot('preliminaries/results/7_top.is_ccyclic_Exports/7_top_1.csv', compression_vs_decomp, 'b')
+#pyplot.show()
 
-addFileToPlot('preliminaries/results/8.4_top.is_ccyclic_Exports/8.4_top_1.csv', True, 'g')
+
+
+
+
+#addFileToPlot('preliminaries/results/9_top.is_ccyclic_Exports/9_top_1.csv', True, 'r')
+#addFileToPlot('preliminaries/results/8.4_top.is_ccyclic_Exports/8.4_top_1.csv', True, 'g')
 #addFileToPlot('preliminaries/results/8.4_top.is_ccyclic_Exports/8.4_top_1.csv', False, 'b')
-pyplot.show()
+#addFileToPlot('preliminaries/results/5_top.is_ccyclic_Exports/5_top_1.csv', compression_vs_decomp, 'r')
+#pyplot.show()
 
 '''
-data = np.genfromtxt('preliminaries/results/8.4_top.is_ccyclic_Exports/8.4_top_1.csv', delimiter=',', skip_header=2)
+print('compressions:')
+addFileToPlot('preliminaries/results/8.4_top.is_ccyclic_Exports/8.4_top_1.csv', True, 'g')
+print('decompressions:')
+addFileToPlot('preliminaries/results/8.4_top.is_ccyclic_Exports/8.4_top_1.csv', False, 'b')
+pyplot.show()
+'''
+
+
+'''
+#data = np.genfromtxt('preliminaries/results/8.4_top.is_ccyclic_Exports/8.4_top_1.csv', delimiter=',', skip_header=2)
+data = np.genfromtxt('preliminaries/results/9_top.is_ccyclic_Exports/9_top_1.csv', delimiter=',', skip_header=2)
 disp = data[:,0]
 force = data[:,1]
 if np.isnan(np.min(disp)):
     raise SyntaxError('Couldn\'t read CSV data: encountered nan.\n Check whether data contains quotation marks etc.')
-cutter: DataCutting = DataCutting.separateData(disp, compression_count)
+cutter: DataCutting = DataCutting(disp, compression_count)
 PolyFitting.fitPolynomial(disp[cutter.compression_ranges[0]], force[cutter.compression_ranges[0]])
 '''
 
 
+top_file_names: List[str] = [
+    "3.04_100_9_PW3",
+    "3.04_100_11_D",
+    "0.76_11.10_6_PW1",
+    "0.76_11.10_2_T",
+    "0.76_12.14_11_T",
+    "0.76_12.14_8_PW2",
+    "0.76_13.18_2_PW2",
+    "0.76_13.18_1_PW2",
+    "2.15_100_14_PW2",
+    "2.15_100_14_PW4",
+    "2.15_100_13_T",
+    "2.15_100_3_T",
+    "2.15_100_11_PW3",
+    "0.76_15.7_6_PW4",
+    "0.76_15.70_2_PW3",
+    "0.76_17.17_7_T",
+    "0.76_17.17_7_PW3",
+    "0.76_18.65_4_D",
+    "0.76_18.65_2_D",
+    "1.52_100_4_PW3",
+    "1.52_100_4_PW2",
+    "0.76_22.20_13_PW1",
+    "0.76_22.20_7_PW2",
+    "0.76_24.29_7_PW3",
+    "0.76_24.29_10_PW2",
+    "0.76_26.37_5_d",
+    "0.76_26.37_3_D",
+    "1.075_100_3_PW3",
+    "1.075_100_15_D",
+    "1.075_100_3_PW2",
+    "1.075_100_15_PW4",
+    "1.075_100_15_T",
+    "1.075_100_15_PW3"
+    ]
+
+# "0.76_22.20_7_PW1",# --> this test seems to have been performed wrongly!!!
+
+side_file_names: List[str] = [
+    "3.04_100_11_PW4",
+    "3.04_100_12_PW4",
+    "0.76_11.10_8_PW3",
+    "0.76_11.10_11_PW1",
+    "0.76_12.14_14_D",
+    "0.76_12.14_1_PW1",
+    "0.76_13.18_8_PW4",
+    "0.76_13.18_13_PW4",
+    "2.15_100_8_T",
+    "2.15_100_14_PW3",
+    "2.15_100_15_PW1",
+    "0.76_15.7_1_PW3",
+    # "0.76_15.70_8_D",
+    # "0.76_17.17_13_PW3",
+    # "0.76_17.17_2_PW4",
+    # "0.76_18.65_1_D",
+    # "0.76_18.65_10_PW4",
+    # "1.52_100_10_D",
+    # "1.52_100_13_T",
+    # "0.76_22.20_15_PW2",
+    # "0.76_22.20_10_PW3",
+    # "0.76_24.29_7_T",
+    # "0.76_24.29_12_PW2",
+    # "0.76_26.37_13_D",
+    # "0.76_26.37_10_T",
+    # "1.075_100_7_D",
+    # "1.075_100_7_PW4",
+    ]
 
 
+test_top = True
+enable_3D_plot = True
+plot_tangent = False
+
+test_file_names = top_file_names if test_top else side_file_names
+
+tests = []
+
+densities: List[float] = []
+compression_energies: List[float] = []
+energy_diffs: List[float] = []
+energy_ratios: List[float] = []
+min_secant_moduli: List[float] = []
+max_tangent_moduli: List[float] = []
+
+pyplot.figure(0)
+pyplot.xlabel('Strain ε (%)')
+pyplot.ylabel('Stress σ (MPa)')
+
+cm_subsection = np.linspace(start = 0.0, stop = 1.0, num = len(test_file_names))
+colors = [ cm.rainbow(x) for x in cm_subsection ]
+
+if enable_3D_plot:
+    fig, ax = pyplot.subplots(subplot_kw = {'projection': '3d'})
+    ax.set_xlabel('Strain ε (%)')
+    ax.set_ylabel('Density (%)')
+    ax.set_zlabel('Stress σ (MPa)')
+
+for test_file_name in test_file_names:
+    print('gathering info for: ' + test_file_name)
+    test = CompSlowDecompTest("test_results/Top/" if test_top else "test_results/Side/", test_file_name)
+    tests.append(test)
+
+if True:
+    for color, test in list(zip(colors, tests)):
+
+        color = cm.rainbow((test.limit_density / 100 - .1) / .3)
+
+        strain_comp = test.strain[test.compression_range]
+        stress_comp = test.stress[test.compression_range]
+        strain_decomp = test.strain[test.decompression_range]
+        stress_decomp = test.stress[test.decompression_range]
+
+        if enable_3D_plot:
+            ax.plot(strain_comp * 100, np.ones(len(test.compression_range)) * test.limit_density, stress_comp * 1000, color=color)
+
+        pyplot.figure(0)
+        pyplot.plot(strain_comp * 100, stress_comp * 1000, color=color)
+        tangent_modulus: Tangent = getTangentModulus(test)
+        if plot_tangent:
+            plotTangent(tangent_modulus)
+
+        max_tangent_moduli.append(tangent_modulus.val)
+        compression_energy = abs(integral(strain_comp, stress_comp)[-1])
+        decompression_energy = abs(integral(strain_decomp, stress_decomp)[-1])
+        densities.append(test.limit_density)
+        compression_energies.append(compression_energy)
+        energy_diffs.append(compression_energy - decompression_energy)
+        energy_ratios.append((compression_energy - decompression_energy) / compression_energy)
+        stress_t = stress_comp[100:-1] - stress_comp[0]
+        strain_t = strain_comp[100:-1] - strain_comp[0]
+        min_secant_moduli.append(min(stress_t / strain_t))
+
+
+if False:
+    i = 0
+    for test in tests:
+        pyplot.figure(20 + i)
+        i += 1
+        strain_comp = test.strain[test.compression_range]
+        stress_comp = test.stress[test.compression_range]
+        PolyFitting.fitPolynomial(strain_comp, stress_comp)
+    pyplot.show()
+
+'''
+pyplot.figure(2)
+pyplot.plot(densities, energy_diffs)
+pyplot.xlabel('Structure density (%)')
+pyplot.ylabel('Energy consumption (J?)')
+
+pyplot.figure(3)
+pyplot.plot(densities, compression_energies)
+pyplot.xlabel('Structure density (%)')
+pyplot.ylabel('Compressive energy (J?)')
+
+pyplot.figure(4)
+pyplot.plot(densities, energy_ratios)
+pyplot.xlabel('Structure density (%)')
+pyplot.ylabel('energy absorption ratio (J?)')
+
+pyplot.figure(5)
+pyplot.plot(densities, min_secant_moduli)
+pyplot.xlabel('density')
+pyplot.ylabel('Minimal secant modulus')
+'''
+pyplot.figure(6)
+pyplot.scatter(densities, max_tangent_moduli)
+pyplot.xlabel('density')
+pyplot.ylabel('Max tangent modulus')
+
+
+
+pyplot.show()
 
 
 
