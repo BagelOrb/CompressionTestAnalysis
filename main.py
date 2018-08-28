@@ -208,15 +208,6 @@ if True:
         end_tangent_moduli.append(getEndTangentModulus(test).val)
 
 
-if False:
-    i = 0
-    for test in tests:
-        pyplot.figure(20 + i)
-        i += 1
-        strain_comp = test.strain[test.compression_range]
-        stress_comp = test.stress[test.compression_range]
-        PolyFitting.fitPolynomial(strain_comp, stress_comp)
-    pyplot.show()
 
 '''
 pyplot.figure(2)
