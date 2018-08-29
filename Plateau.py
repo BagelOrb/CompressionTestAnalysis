@@ -20,7 +20,7 @@ class Plateau:
         if plateaud_indices.size > 0:
             self.start_idx = plateaud_indices[0]
             self.end_idx = plateaud_indices[-1]
-            self.height = np.mean(stress[self.start_idx:self.end_idx])
+            self.stress = np.mean(stress[self.start_idx:self.end_idx])
         else:
             # there is no plateau, so we return the point with lowest derivative
             strain_start_idx = np.where(strain > 0.05)[0][0] # assume that there are location beyond that strain
@@ -28,4 +28,7 @@ class Plateau:
             min_der_idx = np.where(ders == min_derivative)[0][0] # assume we can find the minimum
             self.start_idx = min_der_idx
             self.end_idx = min_der_idx
-            self.height = stress_comp[min_der_idx]
+            self.stress = stress_comp[min_der_idx]
+
+        self.strain_start = strain_comp[self.start_idx]
+        self.strain_end = strain_comp[self.end_idx]

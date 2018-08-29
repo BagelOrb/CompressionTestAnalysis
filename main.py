@@ -11,10 +11,12 @@ import MathUtils
 from Plateau import Plateau
 
 from typing import List
-from typing import NamedTuple
+from typing import Dict
 
 import numpy as np
 from scipy import signal    # savgol_filter
+
+import functools
 
 from matplotlib import cm       # color map
 from matplotlib import pyplot   # plotting
@@ -23,11 +25,14 @@ from mpl_toolkits.mplot3d.axes3d import Axes3D
 
 
 
+
+cmap = cm.nipy_spectral
+
 def getColor(test):
     if density_colors:
-        return cm.rainbow((test.limit_density / 100 - .1) / .3)
+        return cmap((test.limit_density / 100 - .1) / (.28 - .1))
     else:
-        return cm.rainbow(test.printer_number  / 6)
+        return cmap(test.printer_number  / 6)
 
 def getLabel(test):
     if density_colors:
@@ -115,7 +120,7 @@ def plotPlateaus():
         # stress_comp = test.stress[test.compression_range]
         plateau = Plateau(test)
         line_x = np.array([strain_comp[plateau.start_idx], strain_comp[plateau.end_idx]])
-        line_y = np.array([plateau.height, plateau.height])
+        line_y = np.array([plateau.stress, plateau.stress])
         # plateau_xs[i] = strain_comp[plateau.]
         pyplot.plot(line_x, line_y, color = PlottingUtil.lighten_color(getColor(test), .7), label = getLabel(test))
 
@@ -126,25 +131,31 @@ def plotPlateaus():
 
 
 def plotPlateaus3D():
-    plateau_densities: List[List[float]] = []
+    plateaus_per_density: Dict[str, List[Plateau]] = {}
+    for test in tests:
+        plateaus_per_density[str(test.limit_density)] = []
+
+    for test in tests:
+        plateau = Plateau(test)
+        plateaus_per_density[str(test.limit_density)].append(plateau)
+
     plateau_strains: List[List[float]] = []
     plateau_stresses: List[List[float]] = []
-    for test in tests:
-        strain_comp = test.strain[test.compression_range]
-        plateau = Plateau(test)
+    plateau_densities: List[List[float]] = []
+    for density, plateaus in plateaus_per_density.items():
+        strain_start = functools.reduce(lambda tot, plat: tot + plat.strain_start, plateaus, 0) / len(plateaus)
+        strain_end = functools.reduce(lambda tot, plat: tot + plat.strain_end, plateaus, 0) / len(plateaus)
+        stress = functools.reduce(lambda tot, plat: tot + plat.stress, plateaus, 0) / len(plateaus)
 
-        line_x = np.array([strain_comp[plateau.start_idx], strain_comp[plateau.end_idx]])
-        plateau_strains.append(line_x)
-
-        plateau_densities.append([test.limit_density, test.limit_density])
-
-        plateau_stresses.append([plateau.height, plateau.height])
+        plateau_strains.append([strain_start, strain_end])
+        plateau_stresses.append([stress, stress])
+        plateau_densities.append([float(density), float(density)])
 
     xs = np.array(plateau_strains)
     ys = np.array(plateau_densities)
     zs = np.array(plateau_stresses)
 
-    ax.plot_surface(xs, ys, zs, cmap=cm.coolwarm, alpha=0.5)
+    ax.plot_surface(xs, ys, zs, cmap=cmap, alpha=0.5)
 
 
 
