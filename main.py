@@ -7,6 +7,7 @@ from CompSlowDecompTest import CompSlowDecompTest
 from TangentModulus import TangentModulus
 import PolyFitting
 import PlottingUtil
+import MathUtils
 
 from typing import List
 from typing import NamedTuple
@@ -17,20 +18,6 @@ from matplotlib import cm       # color map
 from matplotlib import pyplot   # plotting
 import matplotlib.patches as mpatches
 from mpl_toolkits.mplot3d.axes3d import Axes3D
-
-
-def integral(disp: np.array, force: np.array) -> np.array:
-    ret = np.zeros(disp.size)
-
-    total_volume: float = 0
-    for i in range(disp.size - 1):
-        volume = (disp[i+1] - disp[i]) * 0.5 * (force[i+1] + force[i])
-        total_volume += volume
-        ret[i+1] = total_volume
-
-    return ret
-
-
 
 
 
