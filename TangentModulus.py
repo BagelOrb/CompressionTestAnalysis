@@ -77,8 +77,8 @@ class TangentModulus:
             min_data_index = derivative_optima_indices[der_minima_indices[-1]]
 
         # fit curve to first part of the graph and get the max derivative from that
-        strain_comp_sub = strain_comp[min_data_index:-1]
-        stress_comp_sub = stress_comp[min_data_index:-1]
+        strain_comp_sub = strain_comp[min_data_index:]
+        stress_comp_sub = stress_comp[min_data_index:]
         polynomial = PolyFitting.fit(strain_comp_sub, stress_comp_sub, polynomial_order)
         derivative = PolyFitting.getDerivative(strain_comp_sub, stress_comp_sub, 1, polynomial_order)
         source_x = strain_comp_sub[-1]

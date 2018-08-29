@@ -57,14 +57,14 @@ def gatherStatistics():
         strain_decomp = test.strain[test.decompression_range]
         stress_decomp = test.stress[test.decompression_range]
 
-        compression_energy = abs(integral(strain_comp, stress_comp)[-1])
-        decompression_energy = abs(integral(strain_decomp, stress_decomp)[-1])
+        compression_energy = abs(MathUtils.integral(strain_comp, stress_comp)[-1])
+        decompression_energy = abs(MathUtils.integral(strain_decomp, stress_decomp)[-1])
         densities.append(test.limit_density)
         compression_energies.append(compression_energy)
         energy_diffs.append(compression_energy - decompression_energy)
         energy_ratios.append((compression_energy - decompression_energy) / compression_energy)
-        stress_t = stress_comp[100:-1]
-        strain_t = strain_comp[100:-1] - strain_comp[0]
+        stress_t = stress_comp[100:]
+        strain_t = strain_comp[100:] - strain_comp[0]
         min_secant_moduli.append(min(stress_t / strain_t))
         max_tangent_moduli.append(TangentModulus.getTangentModulus(test).val)
         end_tangent_moduli.append(TangentModulus.getEndTangentModulus(test).val)

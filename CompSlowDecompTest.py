@@ -88,10 +88,10 @@ class CompSlowDecompTest:
                                                                                                 self.force[cutter.compression_ranges[0]],
                                                                                                 compression_vs_decomp = True,
                                                                                                 force_cutoff = 0.005)
-        self.compression_range = cutter.compression_ranges[0][start_disp_cutoff_index:-1]
+        self.compression_range = cutter.compression_ranges[0][start_disp_cutoff_index:]
 
         disp_at_start_cutoff = self.disp[self.compression_range[0]]
-        disp_indices_below_cutoff: np.array[int] = np.where(self.disp[cutter.decompression_ranges[0][0]:-1] < disp_at_start_cutoff)
+        disp_indices_below_cutoff: np.array[int] = np.where(self.disp[cutter.decompression_ranges[0][0]:] < disp_at_start_cutoff)
         end_cutoff_index: int = disp_indices_below_cutoff[0][0]
         self.decompression_range = cutter.decompression_ranges[0][0:end_cutoff_index]
 
