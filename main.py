@@ -87,15 +87,65 @@ def plotCompressions():
         # pyplot.plot(strain_comp, fit_map(strain_comp), color = getColor(test), label = getLabel(test))
 
 
-def plotCompressionDerivatives():
+def plotCompressionDerivativesFitting():
     for test in tests:
         strain_comp = test.strain[test.compression_range]
         stress_comp = test.stress[test.compression_range]
 
-        pyplot.figure(2)
         der = PolyFitting.getDerivative(strain_comp, stress_comp, 1, 25)
         der_map = np.vectorize(der)
         pyplot.plot(strain_comp, der_map(strain_comp), color = PlottingUtil.lighten_color(getColor(test), .7), label = getLabel(test))
+
+
+def plotCompressionDerivativesSmoothing():
+    for test in tests:
+        strain_comp = test.strain[test.compression_range]
+        stress_comp = test.stress[test.compression_range]
+
+        (strain_comp, stress_comp) = signal.savgol_filter((strain_comp, stress_comp), window_length = 51, polyorder = 3)
+
+        pyplot.plot(strain_comp[:-1], MathUtils.derivative(strain_comp, stress_comp),
+                    color = PlottingUtil.lighten_color(getColor(test), .7), label = getLabel(test))
+
+
+def plotPlateaus():
+    for i in range(len(tests)):
+        test = tests[i]
+        strain_comp = test.strain[test.compression_range]
+        # stress_comp = test.stress[test.compression_range]
+        plateau = Plateau(test)
+        line_x = np.array([strain_comp[plateau.start_idx], strain_comp[plateau.end_idx]])
+        line_y = np.array([plateau.height, plateau.height])
+        # plateau_xs[i] = strain_comp[plateau.]
+        pyplot.plot(line_x, line_y, color = PlottingUtil.lighten_color(getColor(test), .7), label = getLabel(test))
+
+        if enable_3D_plot:
+            line_height = np.array([test.limit_density, test.limit_density])
+            ax.plot(line_x, line_height, line_y, color = PlottingUtil.lighten_color(getColor(test), .7), label = getLabel(test))
+
+
+
+def plotPlateaus3D():
+    plateau_densities: List[List[float]] = []
+    plateau_strains: List[List[float]] = []
+    plateau_stresses: List[List[float]] = []
+    for test in tests:
+        strain_comp = test.strain[test.compression_range]
+        plateau = Plateau(test)
+
+        line_x = np.array([strain_comp[plateau.start_idx], strain_comp[plateau.end_idx]])
+        plateau_strains.append(line_x)
+
+        plateau_densities.append([test.limit_density, test.limit_density])
+
+        plateau_stresses.append([plateau.height, plateau.height])
+
+    xs = np.array(plateau_strains)
+    ys = np.array(plateau_densities)
+    zs = np.array(plateau_stresses)
+
+    ax.plot_surface(xs, ys, zs, cmap=cm.coolwarm, alpha=0.5)
+
 
 
 #
@@ -132,8 +182,25 @@ for test_file_name in test_file_names:
 
 
 
+
+
+pyplot.figure(0)
 plotCompressions()
-plotCompressionDerivatives()
+pyplot.legend()
+pyplot.xlabel('Strain ε (%)')
+pyplot.ylabel('Stress σ (MPa)')
+if enable_3D_plot:
+    fig.legend()
+    plotPlateaus3D()
+
+# pyplot.figure(2)
+# plotPlateaus()
+
+# pyplot.figure(2)
+# plotCompressionDerivativesFitting()
+
+# pyplot.figure(2)
+# plotCompressionDerivativesSmoothing()
 
 
 
@@ -173,13 +240,7 @@ pyplot.xlabel('density')
 pyplot.ylabel('tangent modulus at 2 kN')
 '''
 
-pyplot.figure(0)
-pyplot.legend()
-pyplot.xlabel('Strain ε (%)')
-pyplot.ylabel('Stress σ (MPa)')
 
-if enable_3D_plot:
-    fig.legend()
 
 pyplot.show()
 
