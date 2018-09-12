@@ -210,6 +210,7 @@ plot_plateaus = True
 plot_tangent = False
 density_colors = True
 export = True
+add_legend = False
 
 
 all_densities: List[List[float]] = []
@@ -258,13 +259,13 @@ for test_top in {True, False}:
         fig2D = pyplot.figure(0)
         fig2D.tight_layout()
         plotCompressions()
-        pyplot.legend()
+        if add_legend: pyplot.legend()
         pyplot.xlabel('Strain ε (%)')
         pyplot.ylabel('Stress σ (MPa)')
         pyplot.subplot().xaxis.set_major_formatter(ticks_x)
 
     if enable_3D_plot:
-        fig.legend()
+        if add_legend: fig.legend()
         fig.tight_layout()
         ax.view_init(elev=22, azim=162)
         ax.xaxis.set_major_formatter(ticks_x)
