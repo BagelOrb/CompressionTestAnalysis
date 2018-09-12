@@ -28,7 +28,7 @@ class CompSlowDecompTest:
     gcode_dimensions: typing.List[float] = [48.67, 48.48, 48.48]
     gcode_area: float = 48.48 * 48.48
 
-    def __init__(self, folder_name: str, file_name_base: str, compression_count: int = 1):
+    def __init__(self, folder_name: str, file_name_base: str, compression_count: int = 1, use_gcode_dimensions: bool = False):
 
         try:
             test_case_data_filename: str = folder_name + file_name_base + '_1.csv'
@@ -75,27 +75,40 @@ class CompSlowDecompTest:
             logging.warning('For file \'' + test_case_data_filename + '\'')
             exit(1)
 
-        test_data_file: str = folder_name + file_name_base + '.is_ccyclic_Exports/' + file_name_base + '_1.csv'
-        data = np.genfromtxt(test_data_file, delimiter=',', skip_header=2)
-        self.disp = data[:, 0]
-        self.force = data[:, 1]
-        if np.isnan(np.min(self.disp)):
-            raise SyntaxError('Couldn\'t read CSV data: encountered nan.\n Check whether data contains quotation marks etc.')
-        cutter: DataCutting = DataCutting(self.disp, compression_count)
-        assert(len(cutter.compression_ranges) == 1)
+        try:
 
-        start_disp_cutoff_index = ElastoPlasticDeformationCutter.getNongrippedDisplacementIndex(self.disp[cutter.compression_ranges[0]],
-                                                                                                self.force[cutter.compression_ranges[0]],
-                                                                                                compression_vs_decomp = True,
-                                                                                                force_cutoff = 0.005)
-        self.compression_range = cutter.compression_ranges[0][start_disp_cutoff_index:]
+            test_data_file: str = folder_name + file_name_base + '.is_ccyclic_Exports/' + file_name_base + '_1.csv'
+            data = np.genfromtxt(test_data_file, delimiter=',', skip_header=2)
+            self.disp = data[:, 0]
+            self.force = data[:, 1]
+            if np.isnan(np.min(self.disp)):
+                raise SyntaxError('Couldn\'t read CSV data: encountered nan.\n Check whether data contains quotation marks etc.')
+            cutter: DataCutting = DataCutting(self.disp, compression_count)
+            assert(len(cutter.compression_ranges) == 1)
 
-        disp_at_start_cutoff = self.disp[self.compression_range[0]]
-        disp_indices_below_cutoff: np.array[int] = np.where(self.disp[cutter.decompression_ranges[0][0]:] < disp_at_start_cutoff)
-        end_cutoff_index: int = disp_indices_below_cutoff[0][0]
-        self.decompression_range = cutter.decompression_ranges[0][0:end_cutoff_index]
+            start_disp_cutoff_index = ElastoPlasticDeformationCutter.getNongrippedDisplacementIndex(self.disp[cutter.compression_ranges[0]],
+                                                                                                    self.force[cutter.compression_ranges[0]],
+                                                                                                    compression_vs_decomp = True,
+                                                                                                    force_cutoff = 0.005)
+            self.compression_range = cutter.compression_ranges[0][start_disp_cutoff_index:]
 
-        self.disp -= disp_at_start_cutoff
+            disp_at_start_cutoff = self.disp[self.compression_range[0]]
+            if len(cutter.decompression_ranges) == 0 or len(cutter.decompression_ranges[0]) == 0:
+                self.decompression_range = range(self.compression_range[1], self.compression_range[-1])
+            else:
+                disp_indices_below_cutoff: np.array[int] = np.where(self.disp[cutter.decompression_ranges[0][0]:] < disp_at_start_cutoff)
+                end_cutoff_index: int = disp_indices_below_cutoff[0][0]
+                self.decompression_range = cutter.decompression_ranges[0][0:end_cutoff_index]
 
-        self.strain = self.disp / self.gcode_dimensions[0]
-        self.stress = self.force / self.gcode_area * 1000
+            self.disp -= disp_at_start_cutoff
+
+            if use_gcode_dimensions:
+                self.strain = self.disp / self.gcode_dimensions[0] # in ratio (mm/mm)
+                self.stress = self.force / self.gcode_dimensions[0] * 1000 # in MPa (kN/m^2)
+            else:
+                self.strain = self.disp / self.dimensions_before[0]
+                self.stress = self.force / (self.dimensions_before[1] * self.dimensions_before[2]) * 1000
+        except Exception as e:
+            logging.error(traceback.format_exc())
+            logging.warning('For file \'' + test_data_file + '\'')
+            exit(1)
