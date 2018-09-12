@@ -211,6 +211,10 @@ plot_tangent = False
 density_colors = True
 export = True
 
+
+all_densities: List[List[float]] = []
+all_max_tangent_moduli: List[List[float]] = []
+
 for test_top in {True, False}:
 
 
@@ -243,6 +247,9 @@ for test_top in {True, False}:
         ax.set_zlabel('Stress σ (MPa)')
 
     gatherStatistics()
+
+    all_densities.append(densities)
+    all_max_tangent_moduli.append(max_tangent_moduli)
 
     if enable_3D_plot and plot_plateaus:
         plotPlateaus3D()
@@ -324,10 +331,19 @@ for test_top in {True, False}:
             # pickle.dump(pyplot.figure(1), open('analysis/results/stress_strain_' + config + '_3D.pickle', 'wb'))
             pyplot.figure(1).savefig('analysis/results/stress_strain_' + config + '_3D.pdf', bbox_inches='tight')
 
-    pyplot.show()
+    # pyplot.show()
 
 
 
+pyplot.figure(16)
+pyplot.autoscale()
+pyplot.scatter(all_densities[0], all_max_tangent_moduli[0], color='blue', label='Top')
+pyplot.scatter(all_densities[1], all_max_tangent_moduli[1], color='orange', label='Side')
+pyplot.xlabel('Density (%)')
+pyplot.ylabel('Youngs modulus (MPa)')
+pyplot.legend()
+pyplot.figure(16).savefig('analysis/results/youngs_modulus_top_and_side.pdf', bbox_inches='tight')
 
 
+pyplot.show()
 
