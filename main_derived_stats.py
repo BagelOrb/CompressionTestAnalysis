@@ -19,110 +19,62 @@ pyplot.clf()
 
 x_range = [np.min(data[:,2]), np.max(data[:,2])]
 
-for dithering in [True, False]:
-    top_color = 'blue' # if dithering else 'darkcyan'
-    side_color = 'orange' # if dithering else 'red'
+figsize = (4, 3)
 
-    dither_str = ('_no' if not dithering else '') + '_dither'
+symbol = {3:'E', 4:'\\sigma'}
+name = {3: 'Youngs modulus', 4: 'Plateau stress'}
+file = {3: 'youngs_modulus', 4: 'plateau_stress'}
 
-    fig = pyplot.figure(int(dithering))
-    fig.tight_layout()
-    ax = pyplot.gca()
-    ax.autoscale()
+def plotStatistic(stat_row):
+    for dithering in [True, False]:
+        top_color = 'blue'  # if dithering else 'darkcyan'
+        side_color = 'orange'  # if dithering else 'red'
 
-    for top in [True, False]:
-        color = top_color if top else side_color
-        label_stress = 'E_z' if top else 'E_{xy}'
-        # label = label + dither_str
-        data_here = data[np.logical_and(data[:,0] == dithering, data[:,1] == top),:]
-        densities = data_here[:, 2]
+        dither_str = ('_no' if not dithering else '') + '_dither'
 
-
-        pyplot.figure(int(dithering))
+        fig = pyplot.figure(dithering * 2 + stat_row, figsize=figsize)
+        fig.tight_layout()
         ax = pyplot.gca()
-        plateau_stresses = data_here[:, 4]
-        ax.scatter(densities, plateau_stresses, color=color, label='$'+label_stress+'$')
-        if dithering:
-            fit = np.polyfit(densities, plateau_stresses, 1)
-            fit_fn = np.poly1d(fit)
-            fit_label = '\\hat' + label_stress
-            pyplot.plot(x_range, fit_fn(x_range), color=color, label='$'+fit_label+'$')
+        # ax.autoscale()
+        for density in [10.0592231765546, 14.2258898432212, 20.1184463531091, 28.4517796864425]:
+            ax.axvline(density, 0, 1, linestyle='dashed', color='grey')  # plot all whole densities
+        ax.set_xlabel('Density (%)')
+        ax.set_ylabel(name[stat_row] + ' ($MPa$)')
+        if stat_row == 3:
+            ax.set_ylim([0.0, 6.0])
         else:
-            densities_uniq = np.unique(densities)
-            avg_stresses = []
-            for density in densities_uniq:
-                stresses = data_here[densities == density, 4]
-                avg_stresses.append(np.mean(stresses))
+            ax.set_ylim([0.0, 0.62])
 
-            avg_label = '\\bar' + label_stress
-            pyplot.plot(densities_uniq, avg_stresses, color=color, label='$'+avg_label+'$', drawstyle ='steps-mid')
+        for top in [True, False]:
+            color = top_color if top else side_color
+            label_stress = symbol[stat_row] + ('_z' if top else '_{xy}')
+            # label = label + dither_str
+            data_here = data[np.logical_and(data[:, 0] == dithering, data[:, 1] == top), :]
+            densities = data_here[:, 2]
 
-    pyplot.figure(int(dithering))
-    ax = pyplot.gca()
+            stats = data_here[:, stat_row]
+            ax.scatter(densities, stats, color=color, label='$' + label_stress + '$')
+            if dithering:
+                fit = np.polyfit(densities, stats, 1)
+                fit_fn = np.poly1d(fit)
+                fit_label = '\\hat' + label_stress
+                pyplot.plot(x_range, fit_fn(x_range), color=color, label='$' + fit_label + '$')
+            else:
+                stats_uniq = np.unique(densities)
+                avg_stats = []
+                for density in stats_uniq:
+                    stats_ = data_here[densities == density, stat_row]
+                    avg_stats.append(np.mean(stats_))
 
-    for density in [10.0592231765546, 14.2258898432212, 20.1184463531091, 28.4517796864425]:
-        ax.axvline(density, 0, 1, linestyle='dashed', color='grey')  # plot all whole densities
-    ax.set_xlabel('Density (%)')
-    ax.set_ylabel('Plateau stress ($MPa$)')
-    ax.set_ylim([0.0, 0.62])
-    pyplot.legend()
-    fig.savefig('analysis/results/plateau_height_top_and_side' + dither_str +'.pdf', bbox_inches='tight')
+                avg_label = '\\bar' + label_stress
+                pyplot.plot(stats_uniq, avg_stats, color=color, label='$' + avg_label + '$', drawstyle='steps-mid')
 
-# pyplot.show()
+        ax.legend(loc=2)
+        fig.savefig('analysis/results/' + file[stat_row] + '_top_and_side' + dither_str + '.pdf', bbox_inches='tight')
+        pyplot.clf()
+        pyplot.close(fig)
 
+plotStatistic(3)
+plotStatistic(4)
 
-
-pyplot.clf()
-
-x_range = [np.min(data[:,2]), np.max(data[:,2])]
-
-for dithering in [True, False]:
-    top_color = 'blue' # if dithering else 'darkcyan'
-    side_color = 'orange' # if dithering else 'red'
-
-    dither_str = ('_no' if not dithering else '') + '_dither'
-
-    fig = pyplot.figure(10 + int(dithering))
-    fig.tight_layout()
-    ax = pyplot.gca()
-    ax.autoscale()
-
-    for top in [True, False]:
-        color = top_color if top else side_color
-        label_modulus = '\\sigma_z' if top else '\\sigma_{xy}'
-        # label = label + dither_str
-        data_here = data[np.logical_and(data[:,0] == dithering, data[:,1] == top),:]
-        densities = data_here[:, 2]
-
-        pyplot.figure(10 + int(dithering))
-        ax = pyplot.gca()
-        youngs_moduli = data_here[:,3]
-        ax.scatter(densities, youngs_moduli, color=color, label='$'+label_modulus+'$')
-
-        if dithering:
-            fit = np.polyfit(densities, youngs_moduli, 1)
-            fit_fn = np.poly1d(fit)
-            fit_label = '\\hat' + label_modulus
-            pyplot.plot(x_range, fit_fn(x_range), color=color, label='$'+fit_label+'$')
-        else:
-            densities_uniq = np.unique(densities)
-            avg_moduli = []
-            for density in densities_uniq:
-                moduli = data_here[densities == density, 3]
-                avg_moduli.append(np.mean(moduli))
-
-            avg_label = '\\bar' + label_modulus
-            pyplot.plot(densities_uniq, avg_moduli, color=color, label='$'+avg_label+'$', drawstyle ='steps-mid')
-
-
-    pyplot.figure(10 + int(dithering))
-    ax = pyplot.gca()
-    for density in [10.0592231765546, 14.2258898432212, 20.1184463531091, 28.4517796864425]:
-        ax.axvline(density, 0, 1, linestyle='dashed', color='grey')  # plot all whole densities
-    ax.set_xlabel('Density (%)')
-    ax.set_ylabel('Youngs modulus ($MPa$)')
-    ax.set_ylim([0.0, 6.0])
-    pyplot.legend()
-    fig.savefig('analysis/results/youngs_modulus_top_and_side' + dither_str +'.pdf', bbox_inches='tight')
-
-# pyplot.show()
+pyplot.close()
