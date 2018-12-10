@@ -60,8 +60,6 @@ top_file_names_extra_dense: List[str] = [
     "0.76_100_3_T",
     ]
 
-top_file_names: List[str] = top_file_names_1 + top_file_names_2 + top_file_names_in_betweens # + top_file_names_extra_dense # + top_file_names_whole
-
 # "0.76_22.20_7_PW1",# --> this test seems to have been performed wrongly!!!
 
 side_file_names_1: List[str] = [
@@ -116,4 +114,3 @@ side_file_names_extra_dense: List[str] = [
     ]
 
 
-side_file_names: List[str] = side_file_names_1 + side_file_names_2 + side_file_names_in_betweens # + side_file_names_extra_dense # + side_file_names_whole

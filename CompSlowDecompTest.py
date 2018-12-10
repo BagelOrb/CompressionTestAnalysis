@@ -79,8 +79,8 @@ class CompSlowDecompTest:
 
             test_data_file: str = folder_name + file_name_base + '.is_ccyclic_Exports/' + file_name_base + '_1.csv'
             data = np.genfromtxt(test_data_file, delimiter=',', skip_header=2)
-            self.disp = data[:, 0]
-            self.force = data[:, 1]
+            self.disp = data[:, 0] # in mm
+            self.force = data[:, 1] # in kN
             if np.isnan(np.min(self.disp)):
                 raise SyntaxError('Couldn\'t read CSV data: encountered nan.\n Check whether data contains quotation marks etc.')
             cutter: DataCutting = DataCutting(self.disp, compression_count)
@@ -102,12 +102,13 @@ class CompSlowDecompTest:
 
             self.disp -= disp_at_start_cutoff
 
+            mm_to_m = 0.001
             if use_gcode_dimensions:
                 self.strain = self.disp / self.gcode_dimensions[0] # in ratio (mm/mm)
-                self.stress = self.force / self.gcode_dimensions[0] * 1000 # in MPa (kN/m^2)
+                self.stress = self.force / (self.gcode_dimensions[1] * self.gcode_dimensions[2]) / (mm_to_m * mm_to_m * 1000) # in MPa (10^6 * N/m^2 = 10^3 * kN/m^2)
             else:
-                self.strain = self.disp / self.dimensions_before[0]
-                self.stress = self.force / (self.dimensions_before[1] * self.dimensions_before[2]) * 1000
+                self.strain = self.disp / self.dimensions_before[0] # in ratio (mm/mm)
+                self.stress = self.force / (self.dimensions_before[1] * self.dimensions_before[2]) / (mm_to_m * mm_to_m * 1000) # in MPa (10^6 * N/m^2 = 10^3 * kN/m^2)
         except Exception as e:
             logging.error(traceback.format_exc())
             logging.warning('For file \'' + test_data_file + '\'')

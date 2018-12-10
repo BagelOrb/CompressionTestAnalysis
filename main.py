@@ -132,7 +132,7 @@ def plotPlateaus():
 
 
 
-def plotPlateaus3D():
+def plotPlateaus3D(map_density_to_average_plateau_stress):
     plateaus_per_density: Dict[float, List[Plateau]] = {}
     for test in tests:
         plateaus_per_density[test.limit_density] = []
@@ -157,6 +157,8 @@ def plotPlateaus3D():
         strain_end = functools.reduce(lambda tot, plat: tot + plat.strain_end, plateaus, 0.0) / len(plateaus)
         stress = functools.reduce(lambda tot, plat: tot + plat.stress, plateaus, 0.0) / len(plateaus)
 
+        map_density_to_average_plateau_stress[density] = stress
+
         plateau_strains_start.append(strain_start)
         plateau_strains_end.append(strain_end)
         plateau_stresses.append(stress)
@@ -180,10 +182,12 @@ def plotPlateaus3D():
     ax.plot(plateau_strains_start, plateau_densities, plateau_stresses, color='black', alpha=0.15)
     ax.plot(plateau_strains_end, plateau_densities, plateau_stresses, color='black', alpha=0.15)
 
+    # project to bottom
     ax.plot_surface(xs, ys, zs * 0, cmap=cmap, alpha=0.15)
     ax.plot(plateau_strains_start, plateau_densities, np.zeros(len(plateau_densities)), color='black', alpha=0.15)
     ax.plot(plateau_strains_end, plateau_densities, np.zeros(len(plateau_densities)), color='black', alpha=0.15)
 
+    # project to back
     max_strain = 0.8 # max(tests, key = lambda test: np.maximum(test.strain[test.compression_range]))
     ax.plot(np.ones(len(plateau_densities)) * max_strain, plateau_densities, plateau_stresses, color='black', alpha=0.25)
 
@@ -212,139 +216,215 @@ density_colors = True
 export = True
 add_legend = False
 
+all_all_densities: List[List[List[float]]] = []
+all_all_max_tangent_moduli: List[List[List[float]]] = []
+all_all_plateaus: List[List[Dict[float, float]]] = []
 
-all_densities: List[List[float]] = []
-all_max_tangent_moduli: List[List[float]] = []
+for dithering in [True, False]:
 
-for test_top in {True, False}:
+    if dithering:
+        top_file_names: List[str] = TestCases.top_file_names_1 + TestCases.top_file_names_2 + TestCases.top_file_names_in_betweens # + top_file_names_extra_dense # + top_file_names_whole
+        side_file_names: List[str] = TestCases.side_file_names_1 + TestCases.side_file_names_2 + TestCases.side_file_names_in_betweens # + side_file_names_extra_dense # + side_file_names_whole
+    else:
+        top_file_names: List[str] = TestCases.top_file_names_whole
+        side_file_names: List[str] = TestCases.side_file_names_whole
 
-
-
-    test_file_names = TestCases.top_file_names if test_top else TestCases.side_file_names
-
-    tests = []
-
-    densities: List[float] = []
-    compression_energies: List[float] = []
-    energy_diffs: List[float] = []
-    energy_ratios: List[float] = []
-    min_secant_moduli: List[float] = []
-    max_tangent_moduli: List[float] = []
-    end_tangent_moduli: List[float] = []
-
-    for test_file_name in test_file_names:
-        print('gathering info for: ' + test_file_name)
-        test = CompSlowDecompTest("test_results/Top/" if test_top else "test_results/Side/", test_file_name)
-        tests.append(test)
-
-    tests = sorted(tests, key = lambda test: - test.limit_density)
-
-    ticks_x = matplotlib.ticker.FuncFormatter(lambda x, pos: '${0:g}$'.format(x * 100)) # axes tick formatter for percentages
-
-    if enable_3D_plot:
-        fig, ax = pyplot.subplots(subplot_kw = {'projection': '3d'})
-        ax.set_xlabel('Strain ε (%)')
-        ax.set_ylabel('Density (%)')
-        ax.set_zlabel('Stress σ (MPa)')
-
-    gatherStatistics()
-
-    all_densities.append(densities)
-    all_max_tangent_moduli.append(max_tangent_moduli)
-
-    if enable_3D_plot and plot_plateaus:
-        plotPlateaus3D()
-
-    if enable_stress_strain_plot:
-        fig2D = pyplot.figure(0)
-        fig2D.tight_layout()
-        plotCompressions()
-        if add_legend: pyplot.legend()
-        pyplot.xlabel('Strain ε (%)')
-        pyplot.ylabel('Stress σ (MPa)')
-        pyplot.subplot().xaxis.set_major_formatter(ticks_x)
-
-    if enable_3D_plot:
-        if add_legend: fig.legend()
-        fig.tight_layout()
-        ax.view_init(elev=22, azim=162)
-        ax.xaxis.set_major_formatter(ticks_x)
-        ax.invert_yaxis()
-
-    # pyplot.figure(2)
-    # plotPlateaus()
-
-    # pyplot.figure(2)
-    # plotCompressionDerivativesFitting()
-
-    # pyplot.figure(2)
-    # plotCompressionDerivativesSmoothing()
+    drawstyle = 'steps-mid' if not dithering else None
 
 
+    all_densities: List[List[float]] = []
+    all_max_tangent_moduli: List[List[float]] = []
+    all_plateaus: List[Dict[float, float]] = []
 
+    for test_top in [True, False]:
 
-    # pyplot.figure(2)
-    # pyplot.plot(densities, energy_diffs)
-    # pyplot.xlabel('Structure density (%)')
-    # pyplot.ylabel('Energy consumption (J?)')
+        test_file_names = top_file_names if test_top else side_file_names
 
-    # pyplot.figure(3)
-    # pyplot.autoscale()
-    # pyplot.scatter(densities, compression_energies)
-    # pyplot.xlabel('Structure density (%)')
-    # pyplot.ylabel('Compressive energy (J?)')
-    
-    # pyplot.figure(4)
-    # pyplot.plot(densities, energy_ratios)
-    # pyplot.xlabel('Structure density (%)')
-    # pyplot.ylabel('energy absorption ratio (J?)')
-    
-    # pyplot.figure(5)
-    # pyplot.autoscale()
-    # pyplot.scatter(densities, min_secant_moduli)
-    # pyplot.xlabel('density')
-    # pyplot.ylabel('Minimal secant modulus')
-    
-    pyplot.figure(6)
-    pyplot.autoscale()
-    colors = list(map(lambda test: getColor(test), tests))
-    pyplot.scatter(densities, max_tangent_moduli, color=colors)
-    pyplot.xlabel('Density (%)')
-    pyplot.ylabel('Youngs modulus (MPa)')
-    
-    # pyplot.figure(7)
-    # pyplot.autoscale()
-    # pyplot.scatter(densities, end_tangent_moduli)
-    # pyplot.xlabel('density')
-    # pyplot.ylabel('tangent modulus at 2 kN')
+        tests: List[CompSlowDecompTest] = []
 
+        densities: List[float] = []
+        compression_energies: List[float] = []
+        energy_diffs: List[float] = []
+        energy_ratios: List[float] = []
+        min_secant_moduli: List[float] = []
+        max_tangent_moduli: List[float] = []
+        end_tangent_moduli: List[float] = []
 
+        all_plateaus.append({})
 
+        for test_file_name in test_file_names:
+            print('gathering info for: ' + test_file_name)
+            test = CompSlowDecompTest("test_results/Top/" if test_top else "test_results/Side/", test_file_name)
+            tests.append(test)
 
-    if export:
-        config = 'top' if test_top else 'side'
+        tests = sorted(tests, key = lambda test: - test.limit_density)
 
-        pyplot.figure(6).savefig('analysis/results/youngs_modulus_' + config + '.pdf', bbox_inches='tight')
+        ticks_x = matplotlib.ticker.FuncFormatter(lambda x, pos: '${0:g}$'.format(x * 100)) # axes tick formatter for percentages
 
-        # pickle.dump(pyplot.figure(0), open('analysis/results/stress_strain_' + config + '.pickle', 'wb'))
-        pyplot.figure(0).savefig('analysis/results/stress_strain_' + config + '.pdf', bbox_inches='tight')
         if enable_3D_plot:
-            # pickle.dump(pyplot.figure(1), open('analysis/results/stress_strain_' + config + '_3D.pickle', 'wb'))
-            pyplot.figure(1).savefig('analysis/results/stress_strain_' + config + '_3D.pdf', bbox_inches='tight')
+            fig, ax = pyplot.subplots(subplot_kw = {'projection': '3d'})
+            ax.set_xlabel('Strain ε (%)')
+            ax.set_ylabel('Density (%)')
+            ax.set_zlabel('Stress σ (MPa)')
 
-    # pyplot.show()
+        gatherStatistics()
+
+        all_densities.append(densities)
+        all_max_tangent_moduli.append(max_tangent_moduli)
+
+        if enable_3D_plot and plot_plateaus:
+            plotPlateaus3D(all_plateaus[-1])
+
+        if enable_stress_strain_plot:
+            fig2D = pyplot.figure(0)
+            fig2D.tight_layout()
+            plotCompressions()
+            if add_legend: pyplot.legend()
+            pyplot.xlabel('Strain ε (%)')
+            pyplot.ylabel('Stress σ (MPa)')
+            pyplot.subplot().xaxis.set_major_formatter(ticks_x)
+
+        if enable_3D_plot:
+            if add_legend: fig.legend()
+            fig.tight_layout()
+            ax.view_init(elev=22, azim=162)
+            ax.xaxis.set_major_formatter(ticks_x)
+            ax.invert_yaxis()
+
+        # pyplot.figure(2)
+        # plotPlateaus()
+
+        # pyplot.figure(2)
+        # plotCompressionDerivativesFitting()
+
+        # pyplot.figure(2)
+        # plotCompressionDerivativesSmoothing()
 
 
 
-pyplot.figure(16)
-pyplot.autoscale()
-pyplot.scatter(all_densities[0], all_max_tangent_moduli[0], color='blue', label='Top')
-pyplot.scatter(all_densities[1], all_max_tangent_moduli[1], color='orange', label='Side')
-pyplot.xlabel('Density (%)')
-pyplot.ylabel('Youngs modulus (MPa)')
+
+        # pyplot.figure(2)
+        # pyplot.plot(densities, energy_diffs)
+        # pyplot.xlabel('Structure density (%)')
+        # pyplot.ylabel('Energy consumption (J?)')
+
+        # pyplot.figure(3)
+        # pyplot.autoscale()
+        # pyplot.scatter(densities, compression_energies)
+        # pyplot.xlabel('Structure density (%)')
+        # pyplot.ylabel('Compressive energy (J?)')
+
+        # pyplot.figure(4)
+        # pyplot.plot(densities, energy_ratios)
+        # pyplot.xlabel('Structure density (%)')
+        # pyplot.ylabel('energy absorption ratio (J?)')
+
+        # pyplot.figure(5)
+        # pyplot.autoscale()
+        # pyplot.scatter(densities, min_secant_moduli)
+        # pyplot.xlabel('density')
+        # pyplot.ylabel('Minimal secant modulus')
+
+        pyplot.figure(6)
+        pyplot.autoscale()
+        colors = list(map(lambda test: getColor(test), tests))
+        pyplot.scatter(densities, max_tangent_moduli, color=colors)
+        pyplot.xlabel('Density (%)')
+        pyplot.ylabel('Youngs modulus (MPa)')
+
+        # pyplot.figure(7)
+        # pyplot.autoscale()
+        # pyplot.scatter(densities, end_tangent_moduli)
+        # pyplot.xlabel('density')
+        # pyplot.ylabel('tangent modulus at 2 kN')
+
+
+
+
+        if export:
+            config = 'top' if test_top else 'side'
+
+            pyplot.figure(6).savefig('analysis/results/youngs_modulus_' + config + '.pdf', bbox_inches='tight')
+
+            # pickle.dump(pyplot.figure(0), open('analysis/results/stress_strain_' + config + '.pickle', 'wb'))
+            pyplot.figure(0).savefig('analysis/results/stress_strain_' + config + '.pdf', bbox_inches='tight')
+            if enable_3D_plot:
+                # pickle.dump(pyplot.figure(1), open('analysis/results/stress_strain_' + config + '_3D.pickle', 'wb'))
+                pyplot.figure(1).savefig('analysis/results/stress_strain_' + config + '_3D.pdf', bbox_inches='tight')
+
+        pyplot.show() # dont remove
+
+    all_all_densities.append(all_densities)
+    all_all_max_tangent_moduli.append(all_max_tangent_moduli)
+    all_all_plateaus.append(all_plateaus)
+    #
+    # fig = pyplot.figure(16)
+    # ax = fig.add_subplot(111)
+    # ax.autoscale()
+    # for density in [10.0592231765546, 14.2258898432212, 20.1184463531091, 28.4517796864425]:
+    #     ax.axvline(density, 0, 1, linestyle='dashed', color='grey')  # plot all whole densities
+    # ax.scatter(all_densities[0], all_max_tangent_moduli[0], color='blue', label='$E_z$')
+    # ax.scatter(all_densities[1], all_max_tangent_moduli[1], color='orange', label='$E_{xy}$')
+    # ax.set_xlabel('Density (%)')
+    # ax.set_ylabel('Youngs modulus (MPa)')
+    # ax.set_ylim([0.0, 6.0])
+    # ax.legend(loc=0)
+    # fig.savefig('analysis/results/youngs_modulus_top_and_side.pdf', bbox_inches='tight')
+    # ax2 = ax.twinx()
+    # ax2.plot(list(all_plateaus[0].keys()), all_plateaus[0].values(), color='darkcyan', label='$\sigma_z$', drawstyle=drawstyle)
+    # ax2.plot(list(all_plateaus[1].keys()), all_plateaus[1].values(), color='red', label='$\sigma_{xy}$', drawstyle=drawstyle)
+    # ax2.set_ylabel('Plateau stress ($MPa$)')
+    # ax2.set_ylim([0.0, 0.62])
+    # ax2.legend(loc=4)
+    # fig.savefig('analysis/results/youngs_modulus_and_plateau_height_top_and_side.pdf', bbox_inches='tight')
+
+
+
+
+for dithering in [True, False]:
+
+    drawstyle = 'steps-mid' if not dithering else None
+
+    all_densities = all_all_densities[0 if dithering else 1]
+    all_max_tangent_moduli = all_all_max_tangent_moduli[0 if dithering else 1]
+    all_plateaus = all_all_plateaus[0 if dithering else 1]
+
+    top_color = 'blue' if dithering else 'darkcyan'
+    side_color = 'orange' if dithering else 'red'
+
+    fig = pyplot.figure(21)
+    ax = pyplot.gca()
+    ax.autoscale()
+    ax.scatter(all_densities[0], all_max_tangent_moduli[0], color=top_color, label=('$E_z$' + ('' if dithering else ' no') + ' dither'))
+    ax.scatter(all_densities[1], all_max_tangent_moduli[1], color=side_color, label=('$E_{xy}$' + ('' if dithering else ' no') + ' dither'))
+
+    fig2 = pyplot.figure(22)
+    ax2 = pyplot.gca()
+    ax2.autoscale()
+    ax2.plot(list(all_plateaus[0].keys()), all_plateaus[0].values(), color=top_color, label=('$\sigma_z$' + ('' if dithering else ' no') + ' dither'), drawstyle=drawstyle)
+    ax2.plot(list(all_plateaus[1].keys()), all_plateaus[1].values(), color=side_color, label=('$\sigma_{xy}$' + ('' if dithering else ' no') + ' dither'), drawstyle=drawstyle)
+
+
+fig = pyplot.figure(21)
+ax = pyplot.gca()
+for density in [10.0592231765546, 14.2258898432212, 20.1184463531091, 28.4517796864425]:
+    ax.axvline(density, 0, 1, linestyle='dashed', color='grey')  # plot all whole densities
+ax.set_xlabel('Density (%)')
+ax.set_ylabel('Youngs modulus (MPa)')
+ax.set_ylim([0.0, 6.0])
 pyplot.legend()
-pyplot.figure(16).savefig('analysis/results/youngs_modulus_top_and_side.pdf', bbox_inches='tight')
+fig.savefig('analysis/results/youngs_modulus_top_and_side.pdf', bbox_inches='tight')
 
+
+fig2 = pyplot.figure(22)
+ax2 = pyplot.gca()
+for density in [10.0592231765546, 14.2258898432212, 20.1184463531091, 28.4517796864425]:
+    ax2.axvline(density, 0, 1, linestyle='dashed', color='grey')  # plot all whole densities
+ax2.set_xlabel('Density (%)')
+ax2.set_ylabel('Plateau stress ($MPa$)')
+ax2.set_ylim([0.0, 0.62])
+pyplot.legend()
+fig2.savefig('analysis/results/plateau_height_top_and_side.pdf', bbox_inches='tight')
 
 pyplot.show()
 
