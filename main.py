@@ -63,6 +63,7 @@ def gatherStatistics():
         strain_t = strain_comp[100:] - strain_comp[0]
         min_secant_moduli.append(min(stress_t / strain_t))
         max_tangent_moduli.append(TangentModulus.getTangentModulus(test).val)
+        print("Density: " + str(test.limit_density) + ", Modulus: " + str(max_tangent_moduli[-1]))
         end_tangent_moduli.append(TangentModulus.getEndTangentModulus(test).val)
 
 
@@ -141,6 +142,7 @@ def plotPlateaus3D(map_density_to_average_plateau_stress):
     max_stress = 0
     for test in tests:
         plateau = Plateau(test)
+        print("Density: " + str(test.limit_density) + ", Plateau stress: " + str(plateau.stress))
         min_stress = min(min_stress, plateau.stress)
         max_stress = max(max_stress, plateau.stress)
         plateaus_per_density[test.limit_density].append(plateau)
@@ -220,6 +222,7 @@ all_all_densities: List[List[List[float]]] = []
 all_all_max_tangent_moduli: List[List[List[float]]] = []
 all_all_plateaus: List[List[Dict[float, float]]] = []
 
+
 for dithering in [True, False]:
 
     if dithering:
@@ -237,6 +240,7 @@ for dithering in [True, False]:
     all_plateaus: List[Dict[float, float]] = []
 
     for test_top in [True, False]:
+        print("Dithering: " + str(dithering) + ", Top: " + str(test_top))
 
         test_file_names = top_file_names if test_top else side_file_names
 
@@ -253,7 +257,7 @@ for dithering in [True, False]:
         all_plateaus.append({})
 
         for test_file_name in test_file_names:
-            print('gathering info for: ' + test_file_name)
+            # print('gathering info for: ' + test_file_name)
             test = CompSlowDecompTest("test_results/Top/" if test_top else "test_results/Side/", test_file_name)
             tests.append(test)
 
